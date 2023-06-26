@@ -1,0 +1,175 @@
+/* Three columns side by side */
+.column_s {
+    float: left;
+    width: 23%;
+    margin-bottom: 16px;
+    padding: 0 8px;
+  }
+  
+  /* Display the columns below each other instead of side by side on small screens */
+  @media screen and (max-width: 650px) {
+    .column_s {
+      width: 100%;
+      display: block;
+    }
+  }
+  
+  /* Add some shadows to create a card effect */
+  .card {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Some left and right padding inside the container */
+  .container_s {
+    padding: 0 16px;
+  }
+  
+  /* Clear floats */
+  .container_s::after, .row::after {
+    content: "";
+    clear: both;
+    display: table;
+  }
+  
+  .title {
+    color: grey;
+  }
+  
+  .button {
+    border: none;
+    outline: 0;
+    display: inline-block;
+    padding: 8px;
+    color: white;
+    background-color: #000;
+    text-align: center;
+    cursor: pointer;
+    width: 100%;
+  }
+  
+  .button:hover {
+    background-color: #555;
+  }
+
+  .banner_s{
+    margin-top: 0px;
+    display: flex;
+    justify-content: center;
+    max-width: 100%;
+  }
+  .keyboard_s{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .banner-img2 {
+    width: 80%;
+  }
+
+    /* Put this just above the banner or below menubar for fixed menubar */
+    .bannermargin{
+    margin-top: 0px;
+    }
+
+    .object, .Newshop{
+        animation: floating 2s ease-in-out infinite;
+        animation-delay: 0s;
+      }
+
+      .center{
+        text-align: center;
+        margin-top: 0px; 
+      }
+
+      .keyboardsize{
+        height: 100px;
+        width: 130px;
+      }
+
+
+
+    :root {
+        --background: #000;
+        --content: #fff;
+        --scrollbar-track: #000;
+        --scrollbar-thumb: rgba(255, 255, 255, 0.5);
+        --scrollbar-thumb-hover: rgba(255, 255, 255, 0.9);
+    }
+    
+
+/* Smooth scrolling feature */
+    html {
+        scroll-behavior: smooth;
+    }
+    
+/* New thinner scrollbar */
+    ::-webkit-scrollbar {
+        width: 7px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 7px; 
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+    }
+    
+    .btt a {
+        font-family: 'Palette Mosaic', cursive;
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        color: var(--background);
+        backdrop-filter: blur(1px);
+        background: rgba(212, 100, 100, 0.5);
+        width: 50px;
+        height: 50px;
+        font-weight: 900;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 50px;
+        text-decoration: none;
+        transition: .3s;
+    }
+    
+    .btt a:hover {
+        border-radius: 10px;
+        backdrop-filter: blur(1.5px);
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--content);
+        transform: translateY(-10px);
+    }
+    
+
+    /* SDG banner */
+        .sectionB{
+            padding: 0px 0 30px 0;
+          }
+        .rowB{
+            max-width: 1200px;
+            width:100%;
+            display: flex;
+            flex-flow: row wrap;
+            margin-left: auto;
+            margin-right: auto
+          }
+        .colB{
+            display:block;
+            flex:1;
+            float:left;
+            padding:20px;
+          }
+    
+          main{
+            display: block;
+            background-color: white;
+            position: relative;
+          }
+    
