@@ -1,0 +1,41 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.wrapper { 
+    height: 100vh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+}
+
+section {
+    height: 100vh;
+    scroll-snap-align: start;
+    display: grid;
+    place-items: center;
+    font-family: "Roboto", sans-serif;
+    font-size: 13vw
+    ; color:#ffffff;
+}
+
+.wrapper section:nth-child(1) {
+    background-color: #f9ca24;
+}
+
+.wrapper section:nth-child(2) {
+    background-color: #24f9f9;
+}
+
+.wrapper section:nth-child(3) {
+    background-color: #2444f9;
+}
+
+.wrapper section:nth-child(4) {
+    background-color: #f924d5;
+}
+
+.wrapper section:nth-child(5) {
+    background-color: #f92424;
+}
