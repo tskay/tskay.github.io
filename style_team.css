@@ -184,6 +184,10 @@
             scrollbar-width: none;  /* Firefox */
           }
 
+          .rowB{
+            text-align: center;
+          }
+
 
 
           /*------Targets------*/
