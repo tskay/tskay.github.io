@@ -1,7 +1,7 @@
 /* Setting fade transition and default settings */
 body {
     color: #000;
-    background-color: #f4f4f4;
+    background-color: white;
     transition: background-color 1s ease;
   }
   
@@ -111,15 +111,19 @@ body {
   }
   .img-container{
     position: relative;
-    width:190px;
+    width:175px;
+    height: 175px;
     padding-bottom: 0px;
-    margin-bottom: 20px;
+    margin-bottom: 0px;
+    display: flex;
+    align-items: center;
+    vertical-align: middle;
+    justify-content: center;
   }
 
 
   .img-container img{
-    display: block
-    
+    display: block;
   }
 
   .flex-container{
@@ -170,4 +174,43 @@ body {
 
   #container2{
     scroll-snap-type: y mandatory;
+  }
+
+  .row2 {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 1180px;
+    width: 100%;
+    justify-content: center;
+    margin: auto;
+    /*align-items: center; */
+  }
+
+
+  .panel .row {
+    display: flex;
+    flex-wrap: row wrap;
+    max-width: 1180px;
+    width: 100%;
+    justify-content: center;
+    margin: auto;
+    /*align-items: center; */
+  }
+  .panel .column{
+    flex: 1;
+    float: left;
+    box-sizing: border-box;
+  }
+  .panel .col-7{
+    display: inline;
+    flex:1;
+    float:left;
+    width:70%;
+    padding-right: 15px;
+    box-sizing: border-box;
+  }
+  .panel .col-3{
+    width:30%;
+    padding-right: 15px;
+    box-sizing: border-box;
   }
