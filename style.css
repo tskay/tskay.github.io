@@ -165,15 +165,7 @@ section{
   background-size: cover;
   
 }
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  max-width: 1180px;
-  width: 100%;
-  justify-content: center;
-  margin: auto;
-  /*align-items: center; */
-}
+
 .column{
   flex: 1;
   float: left;
