@@ -5,6 +5,7 @@ $(window).scroll(function() {
         $body = $('body'),
         $panel = $('.panel');
         $sdgfontcol = $('.sdgfontcol');
+        $sdgback = $('.sdgback');
     
     // Change 33% earlier than scroll position so colour is there when you arrive.
     var scroll = $window.scrollTop() + ($window.height() / 3);
@@ -30,6 +31,7 @@ $(window).scroll(function() {
         // Add class of currently active div
         $body.addClass('color-' + $(this).data('color'));
         $sdgfontcol.addClass('color-' + $(this).data('color'));
+        $sdgback.addClass('color-' + $(this).data('color'));
       }
     });    
     

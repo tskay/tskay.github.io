@@ -31,7 +31,8 @@ let gifZoomed = false;
 let currentScale = 0.1;
 const maxScale = 2; // Define the maximum scale value
 
-function animate() {
+function unifiedScrollHandler() {
+    // Variables from Script 1
     const scrollPosition = window.scrollY || document.documentElement.scrollTop;
     const gifSectionOffset = gifSection.offsetTop;
     const windowHeight = window.innerHeight;
@@ -50,15 +51,37 @@ function animate() {
     //console.log(scrollPosition);
 
     // Fade-to-white effect
-    //const fadeStart = 100; // Start fading after 100px of scrolling
-    //const fadeEnd = 1000; // End fading by 1000px of scrolling
-    //const fadeAmount = (scrollPosition - fadeStart) / (fadeEnd - fadeStart);
-    //fadeOverlay.style.opacity = Math.min(Math.max(fadeAmount, 0), 1);
+    const fadeStart = 100; // Start fading after 100px of scrolling
+    const fadeEnd = 1000; // End fading by 1000px of scrolling
+    const fadeAmount = (scrollPosition - fadeStart) / (fadeEnd - fadeStart);
+    fadeOverlay.style.opacity = Math.min(Math.max(fadeAmount, 0), 1);
 
     requestAnimationFrame(animate);
+
+
+
+    // Code from Script 2's scroll handler (converted to vanilla JS)
+    // Note: You'll need to adapt this part based on your HTML structure and what each class does
+    var panels = document.querySelectorAll('.panel');
+    var body = document.body;
+    var scroll = scrollPosition + (window.innerHeight / 3);
+    panels.forEach(function(panel) {
+        if (panel.offsetTop <= scroll && panel.offsetTop + panel.offsetHeight > scroll) {
+            // Remove all classes on body with color-
+            body.classList.forEach(function(className) {
+                if (className.startsWith('color-')) {
+                    body.classList.remove(className);
+                }
+            });
+            var color = panel.getAttribute('data-color');
+            body.classList.add('color-' + color);
+        }
+    });
+
+
 }
 
-animate();
+
 
 const imagePosition = { x: 100, y: 100 }; // Position of the image
 const imageRadius = 50; // Radius of the image

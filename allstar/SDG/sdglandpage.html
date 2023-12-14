@@ -12,6 +12,7 @@
 </head>
 
 <body>
+    <div class="fade-overlay"></div>
     <div class="panel" data-color="g100" style="z-index: -9999;">
         <div class="gif-section">
           <div class="plane-white"></div>
@@ -609,6 +610,7 @@
     
         <div>
         <a class="sdgfontcol control__link" id="triggerload" href="#sdgtop" data-fx="Amun">^</a>
+        <a class="sdgback control__link" id="triggerload" href="../index.html"><p style="transform: translateY(-20px); ;">&#60;</p></a>
     </div>
     
     
@@ -619,32 +621,6 @@
     <script src="js/masonry.pkgd.min.js"></script>
     <script src="js/anime.min.js"></script>
     <script src="js/main.js"></script>
-
-    <script type="text/javascript">
-        $(document).ready(function() {
-        // Attach click event handler to the link element
-        $('.control__link').click(function() {
-          /* $('.img-container').each(function() {
-            var imgSrc = $(this).data('src');
-            $(this).attr('src', imgSrc);
-            $(this).hide();
-            $(this).show();
-          }); */
-          // Refresh the window
-          
-          var effect = $(this).data('fx');
-          if (effect === 'Amun') {
-            // Trigger "Amun" effect here
-            //console.log('Amun effect triggered');
-            
-            $('[data-fx="Amun"]').trigger('click');
-    
-            
-          }
-        });
-        
-      });
-      </script>
 </body>
 
 </html>

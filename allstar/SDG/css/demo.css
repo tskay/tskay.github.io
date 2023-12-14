@@ -422,20 +422,3 @@ main {
 	}
 }
 
-.gif-section {
-	height: 1450px;
-	/* Adjust as per your GIF's height */
-	position: relative;
-	overflow: hidden;
-	display: flex;
-	width: 100%;
-	justify-content: center;
-  }
-  
-  .gif-section img {
-	object-fit: cover;
-	transform: scale(1);
-	transition: transform 0.1s ease-in-out;
-	width: 50%;
-	height: 50%;
-  }
