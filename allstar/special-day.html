@@ -3,6 +3,7 @@
   <head>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="calandar.js" defer></script>
     <title>Road Traffic Information Centre</title>
   </head>
   <body>
@@ -33,11 +34,32 @@
                     <li>
                       <a href="special-day.html">Special Days</a>
                     </li>
+                    <li>
+                      <a href="data.html">bar chart data</a>
+                    </li>
                   </ul>
                 </a>
               </li>
               <li>
                 <a href="research-pillar.html">Research</a>
+              </li>
+              <li>
+                <a href="#">Learn
+                  <span>
+                    <i class="fa fa-angle-down" aria-hidden="true"></i>
+                  </span>
+                  <ul>
+                    <li>
+                      <a href="car_go_brrrrrrrr.html">Drive Simulator</a>
+                    </li>
+                    <li>
+                      <a href="quiz.html">Quiz</a>
+                    </li>
+                    <li>
+                      <a href="card_game.html">Card Game</a>
+                    </li>
+                  </ul>
+                </a>
               </li>
             </ul>
           </nav>
@@ -53,6 +75,34 @@
         </div>
       </div>
     </section>
+    <div class="calandar">
+      <div class="wrapper">
+        <header>
+          <div class="calandar-header">
+          <p class="current-date"></p>
+          <div class="icons">
+            <span id="prev" class="material-symbols-rounded">&lt;</span>
+            <span id="next" class="material-symbols-rounded">&gt;</span>
+          </div>
+          </div>
+        </header>
+        <div class="calendar">
+          <ul class="weeks">
+            <li>Sun</li>
+            <li>Mon</li>
+            <li>Tue</li>
+            <li>Wed</li>
+            <li>Thu</li>
+            <li>Fri</li>
+            <li>Sat</li>
+          </ul>
+          <ul class="days"></ul>
+        </div>
+        <div class="content">
+          <div id="details"></div>
+        </div>
+      </div>
+    </div>
     <section class="sec-space">
       <div class="container">
         <div class="row-col-3 row-event">
