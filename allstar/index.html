@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <title>Road Traffic Information Centre</title>
+    
 </head>
 
 <body>
@@ -77,10 +78,9 @@
                     <h1>Road Traffic Information Centre</h1>
                     <p>Find all related information here</p>
                 </div>
-                <div class="bar">
-                    <input class="searchbar" type="text" title="Search" placeholder="Search...">
-                    <i class="fa fa-search search-icon"></i>
-                </div>
+                <script async src="https://cse.google.com/cse.js?cx=a42f4751437c943af">
+                </script>
+                <div class="gcse-searchbox-only"></div>
             </div>
         </div>
     </section>
@@ -89,7 +89,7 @@
             <div class="tabs">
               <input type="radio" id="tab1" name="tabs" checked="checked">
               <label for="tab1">About SDG 3.6</label>
-              <div class="tab">
+              <div class="tab" style="padding-bottom: 0px;">
                 <div class="row-col-1">
                   <div class="col">
                     <h2>SDG Target 3.6 | Road Traffic Injuries: By 2030, Halve The Number Of Global Deaths And Injuries From Road Traffic Accidents </h2>
@@ -120,7 +120,7 @@
               </div>
               <input type="radio" id="tab2" name="tabs">
               <label for="tab2">Key Findings</label>
-              <div class="tab">
+              <div class="tab" style="padding-bottom: 0px;">
                 <div class="row-col-3">
                   <div class="col">
                     <img src="finding-1-img.jpg" width="250px"/>
@@ -144,7 +144,7 @@
               </div>
               <input type="radio" id="tab3" name="tabs">
               <label for="tab3">Key Facts</label>
-              <div class="tab">
+              <div class="tab" style="padding-bottom: 0px;">
                 <ul>
                   <li>
                     The United Nations General Assembly has set an ambitious target of halving the global number of deaths and injuries from road traffic crashes by 2030 (A/RES/74/299).
@@ -208,14 +208,7 @@
                             </div>
                         </div>
 
-                        <script>
-                            $(document).ready(function() {
-                                $('.counter').counterUp({
-                                    delay: 10,
-                                    time: 1200
-                                });
-                            });
-                        </script>
+                        
                         </div>
                     
     </section>
@@ -250,6 +243,25 @@
             </div>
         </div>
     </div>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/waypoints/4.0.1/jquery.waypoints.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Counter-Up/1.0.0/jquery.counterup.min.js"></script>
+
+    <script>
+      let isCounterInitialized = false;
+      $(document).ready(function() {
+        if (!isCounterInitialized) {
+          $('.counter').counterUp({
+              delay: 10,
+              time: 1200
+          });
+          isCounterInitialized = true;
+        }
+      });
+    </script>
 </body>
+
+
 
 </html>

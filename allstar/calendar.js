@@ -88,8 +88,11 @@ const renderCalendar = () => {
     }
 
     for (let i = 1; i <= lastDateOfMonth; i++) {
+        let fullDate = `${currYear}-${(currMonth + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
         let isToday = i === date.getDate() && currMonth === new Date().getMonth() && currYear === new Date().getFullYear() ? "active" : "";
-        liTag += `<li class="${isToday}" onclick="showDetails('${currYear}-${(currMonth + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}')">${i}</li>`;
+        let isSpecial = specialEvents.hasOwnProperty(fullDate) ? "special-event" : "";
+    
+        liTag += `<li class="${isToday} ${isSpecial}" onclick="showDetails('${fullDate}')">${i}</li>`;
     }
 
     for (let i = lastDayOfMonth; i < 6; i++) {
