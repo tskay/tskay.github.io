@@ -284,7 +284,7 @@ main {
     flex-direction: column;
     position: sticky;
     height: 100%;
-    top: 0;
+    
 }
 
 ul.side-list {
@@ -579,7 +579,7 @@ tbody tr:nth-of-type(odd) {
 .event-desc h3,
 .event-desc h5 {
     color: white;
-    text-shadow: 1px 1px 5px #3f3f3f;
+    text-shadow: 1px 1px 5px #000000;
 }
 
 .event-desc h3 {
@@ -592,6 +592,36 @@ tbody tr:nth-of-type(odd) {
 
 .event-link {
     text-decoration: none;
+}
+
+.livedemo-1 {
+    background-image: url("quiz.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.livedemo-2 {
+    background-image: url("cardgame.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.livedemo-3 {
+    background-image: url("chatbot.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.col-demo {
+
+    background-size: cover;
+    background-repeat: no-repeat;
+    transition: transform 0.3s;
+    padding: 20px;
+    aspect-ratio: 1 / 1;
 }
 
 #footer {

@@ -1,0 +1,65 @@
+    @import url(https://fonts.googleapis.com/css?family=Helvetica);
+    @import url(https://fonts.googleapis.com/css?family=Open+Sans);
+    .call-to-action {
+        text-align: center;
+        padding-top: 100px;
+    }
+    
+    .image-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .text {
+        background-color: #425085;
+        height: 110px;
+    }
+    
+    .p {
+        font-size: 16px;
+        color: white;
+        margin-bottom: 15px;
+        line-height: 1.5;
+        font-family: 'Open Sans', sans-serif;
+    }
+    
+    .circle-button {
+        position: absolute;
+        top: 43%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background-color: #425085;
+        transition: background-color 0.3s ease;
+        text-decoration: none;
+        color: brown;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .circle-button:hover {
+        background-color: #fcf5f5;
+    }
+    
+    .main-image {
+        margin-top: 50px;
+        transform: scale(2);
+    }
+
+    #cta-container {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        width: 1180px;
+        position: relative;
+    
+    }
+    
+    #question-container {
+        padding: 20px;
+        text-align: center;
+        margin-top: 40px;
+    }
