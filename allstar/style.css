@@ -184,11 +184,18 @@ header {
 }
 
 .banner-wrap {
+    
     background: linear-gradient(rgba(2, 2, 2, 0.5), rgba(0, 0, 0, 0.38)), url('banner.jpg');
     width: 100%;
     height: 400px;
     background-size: cover;
     position: relative;
+}
+
+.banner-sec {
+    position: relative;
+    overflow: hidden; /* Hides the parts of the video that overflow */
+    height: 500px; /* Set the same height as the video */
 }
 
 .banner-container {
@@ -198,10 +205,34 @@ header {
     transform: translate(-50%, -50%);
 }
 
+.banner-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: cover; /* Ensures the video covers the area */
+}
+
 .banner-title h1,
 .banner-title p {
     color: white;
     text-align: center;
+}
+
+.centre_text {
+    display: flex;
+    align-items: center; /* Vertical centering */
+    justify-content: center; /* Horizontal centering */
+    height: 100%; /* Adjust as needed */
+}
+
+.my-video {
+    width: 300px; /* Adjust as needed */
+    height: auto; /* Maintain aspect ratio */
 }
 
 .page-header-wrap {
@@ -576,6 +607,19 @@ tbody tr:nth-of-type(odd) {
     justify-content: flex-end;
 }
 
+.event-desc-wrap2 {
+    display: flex;
+    justify-content: center; /* Horizontal centering */
+    height: 100%; /* Adjust as needed */
+}
+
+.event-desc-wrap3 {
+    display: flex;
+    /*align-items: center;*/ /* Vertical centering */
+    justify-content: center; /* Horizontal centering */
+    height: 100%; /* Adjust as needed */
+}
+
 .event-desc h3,
 .event-desc h5 {
     color: white;
@@ -610,6 +654,20 @@ tbody tr:nth-of-type(odd) {
 
 .livedemo-3 {
     background-image: url("chatbot.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.livedonate-1 {
+    background-image: url("spay.jpg");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.livedonate-2 {
+    background-image: url("sdgdonate.png");
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
