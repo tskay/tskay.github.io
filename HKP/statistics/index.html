@@ -17,34 +17,62 @@
           <div class="content column-wrap ">
               <div class="box">
                   <img class="icon" src="area-icon.png"></img>
+                  <span class="text"><h2>Land Areas</h2></span>
                   <div class="counter ">743330</div>
-                  <span class="text">Land Areas <p>(square kilometers)</p></span>
+                  <span class="text">square kilometers</p></span>
               </div>
               <div class="box ">
                 <img class="icon" src="population-people-icon.png"></img>
+                <span class="text"><h2>Human Population</h2></span>
                   <div class="counter">17.7</div>
-                  <span class="text">Human Population<p>(million)</p></span>
+                  <span class="text">million</span>
               </div>
               <div class="box ">
                 <img class="icon" src="countries-icon.png"></img>
-                  <span class="country"><p>Malaysia,</p><p>Indonesia,</p><p>Brunei</p></span>
-                  <span class="text">Countries</span>
+                <span class="text"><h2>Countries</h2></span>
+                <span class="country" id="delayedText1" style="">Malaysia</span>
+                <span class="country" id="delayedText2" style="">Indonesia</span>
+                <span class="country" id="delayedText3" style="">Brunei</span>
+      
               </div>
               <div class="box">
                 <img class="icon" src="biodiversity-icon.png"></img>
+                <span class="text"><h2>Biodiversity</h2></span>
                 <div class="counter">15000</div>
-                <div class="counter">1400</div>
-                <span class="text">Biodiversity <p>(plant species > fauna)</p></span>
+                <span class="text">plant species</p></span>
+                <div>
+                  <p style="display: inline;" class="counter-text">></p>
+                  <div class="counter" style="display: inline;">
+                    1400
+                  </div>
+                </div>
+                <span class="text">fauna</p></span>
               </div>
           </div>
         </div>
     <script>
       $(document).ready(function() {
-  $('.counter').counterUp({
-      delay: 10,
-      time: 1200
-  });
-});
+        $('.counter').counterUp({
+            delay: 10,
+            time: 1200
+        });
+      });
+
+      function showText(id, delay) {
+          var elem = document.getElementById(id);
+          setTimeout(function () {
+              elem.style.opacity = 1;
+          }, delay * 450)
+      }
+      window.onload = function () {
+          showText('delayedText1', 1);
+          showText('delayedText2', 2);
+          showText('delayedText3', 3);
+          showText('delayedText4', 4);
+}
+
+
+
     </script>
     </body>
 </html>
