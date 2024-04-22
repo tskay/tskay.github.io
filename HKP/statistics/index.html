@@ -51,25 +51,26 @@
           </div>
         </div>
     <script>
+      
+      function showText(id, delay) {
+          var elem = document.getElementById(id);
+          setTimeout(function () {
+              elem.style.opacity = 1;
+          }, delay * 400)
+      }
+      
       $(document).ready(function() {
         $('.counter').counterUp({
             delay: 10,
             time: 1200
         });
+        showText('delayedText1', 1);
+        showText('delayedText2', 2);
+        showText('delayedText3', 3);
+        showText('delayedText4', 4);
       });
 
-      function showText(id, delay) {
-          var elem = document.getElementById(id);
-          setTimeout(function () {
-              elem.style.opacity = 1;
-          }, delay * 450)
-      }
-      window.onload = function () {
-          showText('delayedText1', 1);
-          showText('delayedText2', 2);
-          showText('delayedText3', 3);
-          showText('delayedText4', 4);
-}
+      
 
 
 
