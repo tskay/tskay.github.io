@@ -663,3 +663,9 @@ body {
 body::-webkit-scrollbar {
   display: none;
 }
+
+
+.container-game {
+  display: flex;
+  justify-content: center;
+}
