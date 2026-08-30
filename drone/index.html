@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drone Test Field — Route Planner</title>
+<style>  
+  :root{
+    --bg: #0A0E14;
+    --panel: #0F1620;
+    --panel-2: #0C1119;
+    --grid-line: #16212C;
+    --grid-line-major: #223244;
+    --border: #1E2A38;
+    --accent-route: #F5A623;
+    --takeoff: #34D399;
+    --landing: #FB7185;
+    --point: #38BDF8;
+    --point-fill: #0B1B26;
+    --obstacle: #EF4444;
+    --text-primary: #E7ECF3;
+    --text-secondary: #7C8797;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, #0D1420 0%, var(--bg) 55%);
+    color:var(--text-primary);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:28px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  #fieldPanel:fullscreen{
+    max-width:none;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:stretch;
+    background:var(--bg);
+    padding:28px;
+    border-radius:0;
+  }
+  #fieldPanel:-webkit-full-screen{
+    max-width:none;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:stretch;
+    background:var(--bg);
+    padding:28px;
+    border-radius:0;
+  }
+  #fieldPanel:fullscreen svg,
+  #fieldPanel:-webkit-full-screen svg{
+    max-height:calc(100vh - 160px);
+    width:auto;
+    max-width:100%;
+    margin:0 auto;
+  }
+  #fieldPanel:fullscreen #svgHolder,
+  #fieldPanel:-webkit-full-screen #svgHolder{
+    display:flex;
+    justify-content:center;
+    flex:1;
+    min-height:0;
+  }
+  header{
+    display:flex;
+    justify-content:flex-start;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:22px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:16px;
+  }
+  .toolbar{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .title-block .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.18em;
+    color:var(--accent-route);
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  h1{
+    margin:0;
+    font-size:24px;
+    font-weight:700;
+    letter-spacing:-.01em;
+  }
+  .subtitle{
+    color:var(--text-secondary);
+    font-size:13px;
+    margin-top:4px;
+    font-family:var(--mono);
+  }
+  .btns{display:flex; gap:10px;}
+  button{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:10px 16px;
+    border-radius:3px;
+    cursor:pointer;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text-primary);
+    transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  button:hover{border-color:var(--accent-route); color:var(--accent-route);}
+  button.primary{
+    border-color:var(--accent-route);
+    color:#0A0E14;
+    background:var(--accent-route);
+    font-weight:600;
+  }
+  button.primary:hover{ background:#ffb948; color:#0A0E14;}
+  button.danger:hover{border-color:var(--landing); color:var(--landing);}
+
+  .layout{
+    display:grid;
+    grid-template-columns:minmax(0,640px) minmax(280px,1fr);
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:880px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:16px;
+  }
+  .field-panel{ }
+  svg{width:100%; height:auto; display:block;}
+
+  .section-label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--text-secondary);
+    margin:0 0 10px 0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-label::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--border);
+  }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-top:12px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-secondary);
+  }
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .swatch{width:11px;height:11px;border-radius:50%; display:inline-block;}
+  .swatch.sq{border-radius:2px;}
+
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px;}
+  th,td{ text-align:left; padding:6px 4px; border-bottom:1px solid var(--border); }
+  th{color:var(--text-secondary); font-weight:500; letter-spacing:.05em; text-transform:uppercase; font-size:10px;}
+  td.role-takeoff{color:var(--takeoff); font-weight:600;}
+  td.role-landing{color:var(--landing); font-weight:600;}
+  td.role-normal{color:var(--point);}
+
+  .route-list{
+    font-family:var(--mono);
+    font-size:13px;
+    list-style:none;
+    margin:0; padding:0;
+  }
+  .route-list li{
+    display:flex;
+    justify-content:space-between;
+    padding:7px 0;
+    border-bottom:1px dashed var(--border);
+  }
+  .route-list li:last-child{border-bottom:none;}
+  .route-list .leg-num{color:var(--text-secondary); margin-right:8px;}
+  .route-list .dist{color:var(--accent-route);}
+  .total-row{
+    display:flex; justify-content:space-between;
+    font-family:var(--mono); font-size:12px;
+    margin-top:10px; padding-top:10px;
+    border-top:1px solid var(--border);
+    color:var(--text-secondary);
+  }
+  .total-row b{color:var(--text-primary);}
+
+  .obstacle-info{font-family:var(--mono); font-size:12px; color:var(--text-secondary); line-height:1.7;}
+  .obstacle-info b{color:var(--obstacle);}
+
+  .stack{display:flex; flex-direction:column; gap:18px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Drone Coding Challenge · Test Field Generator</div>
+      <h1>Route Planner — 5.0m × 4.0m Field</h1>
+      <div class="subtitle">Origin (0,0) at bottom-left · all units in meters</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="panel field-panel" id="fieldPanel">
+      <div class="toolbar">
+        <div class="section-label" style="margin:0; flex:1;">Cartesian Plane</div>
+        <div class="btns">
+          <button id="fullscreenBtn">Full Screen</button>
+          <button id="togglePathBtn">Hide Path Line</button>
+          <button id="newRouteBtn" class="primary">New Route</button>
+          <button id="resetBtn" class="danger">Reset All Points</button>
+        </div>
+      </div>
+      <div id="svgHolder"></div>
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--takeoff)"></i>Take-off</span>
+        <span><i class="swatch" style="background:var(--landing)"></i>Landing</span>
+        <span><i class="swatch" style="background:var(--point)"></i>Waypoint</span>
+        <span><i class="swatch sq" style="background:var(--obstacle)"></i>Obstacle (0.3m × 0.3m)</span>
+        <span><i class="swatch sq" style="background:var(--accent-route)"></i>Route</span>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <div class="section-label">Points</div>
+        <table id="pointsTable"></table>
+      </div>
+
+      <div class="panel">
+        <div class="section-label">Obstacle</div>
+        <div class="obstacle-info" id="obstacleInfo"></div>
+      </div>
+
+      <div class="panel">
+        <div class="section-label">Current Route</div>
+        <ul class="route-list" id="routeList"></ul>
+        <div class="total-row"><span>Total path length</span><b id="totalDist"></b></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Config ----------
+const FIELD_W = 5.0;   // meters
+const FIELD_H = 4.0;   // meters
+const POINT_R = 0.15;  // meters (30cm diameter)
+const OBST_SIZE = 0.3; // meters
+const N_POINTS = 12;
+const MIN_SEP = 0.5;   // min center-to-center distance between points
+const SCALE = 110;     // px per meter
+const PAD_L = 46, PAD_R = 20, PAD_T = 20, PAD_B = 40;
+
+const SVG_W = FIELD_W*SCALE + PAD_L + PAD_R;
+const SVG_H = FIELD_H*SCALE + PAD_T + PAD_B;
+
+let state = { points: [], obstacle: null, route: [], showPath: true };
+
+// ---------- Helpers ----------
+function rand(min, max){ return Math.random()*(max-min)+min; }
+function clamp(v,min,max){ return Math.max(min, Math.min(max,v)); }
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function circleRectOverlap(cx, cy, r, rect){
+  const closestX = clamp(cx, rect.x, rect.x+rect.size);
+  const closestY = clamp(cy, rect.y, rect.y+rect.size);
+  const dx = cx-closestX, dy = cy-closestY;
+  return (dx*dx + dy*dy) < (r*r);
+}
+
+function ccw(A,B,C){ return (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x); }
+function segSegIntersect(p1,p2,p3,p4){
+  return (ccw(p1,p3,p4) !== ccw(p2,p3,p4)) && (ccw(p1,p2,p3) !== ccw(p1,p2,p4));
+}
+function segRectIntersect(p1,p2,rect){
+  const a={x:rect.x,y:rect.y}, b={x:rect.x+rect.size,y:rect.y},
+        c={x:rect.x+rect.size,y:rect.y+rect.size}, d={x:rect.x,y:rect.y+rect.size};
+  const edges=[[a,b],[b,c],[c,d],[d,a]];
+  return edges.some(([e,f]) => segSegIntersect(p1,p2,e,f));
+}
+
+// ---------- Generation ----------
+function generateObstacle(){
+  return {
+    x: rand(0.3, FIELD_W - OBST_SIZE - 0.3),
+    y: rand(0.3, FIELD_H - OBST_SIZE - 0.3),
+    size: OBST_SIZE
+  };
+}
+
+function generatePoints(obstacle){
+  const pts = [];
+  let attempts = 0;
+  while(pts.length < N_POINTS && attempts < 8000){
+    attempts++;
+    const x = rand(POINT_R+0.05, FIELD_W-POINT_R-0.05);
+    const y = rand(POINT_R+0.05, FIELD_H-POINT_R-0.05);
+    if(circleRectOverlap(x, y, POINT_R+0.1, obstacle)) continue;
+    let ok = true;
+    for(const p of pts){
+      if(dist(p,{x,y}) < MIN_SEP){ ok=false; break; }
+    }
+    if(ok) pts.push({x,y});
+  }
+  // Assign roles
+  const order = shuffle(pts.map((_,i)=>i));
+  const takeoffIdx = order[0];
+  const landingIdx = order[1];
+  let normalCount = 1;
+  return pts.map((p,i)=>{
+    if(i === takeoffIdx) return {...p, role:'takeoff', label:'T'};
+    if(i === landingIdx) return {...p, role:'landing', label:'L'};
+    return {...p, role:'normal', label: String(normalCount++)};
+  });
+}
+
+function generateRoute(points, obstacle){
+  const takeoff = points.find(p=>p.role==='takeoff');
+  const landing = points.find(p=>p.role==='landing');
+  const normals = points.filter(p=>p.role==='normal');
+
+  let best = null;
+  for(let attempt=0; attempt<300; attempt++){
+    const chosen = shuffle(normals).slice(0,4);
+    const seq = [takeoff, ...chosen, landing];
+    let crosses = false;
+    for(let i=0;i<seq.length-1;i++){
+      if(segRectIntersect(seq[i], seq[i+1], obstacle)){ crosses = true; break; }
+    }
+    if(!crosses){ best = seq; break; }
+    if(!best) best = seq; // fallback if nothing clean found
+  }
+  return best;
+}
+
+// ---------- Rendering ----------
+function toPx(pt){
+  return {
+    x: PAD_L + pt.x*SCALE,
+    y: PAD_T + (FIELD_H - pt.y)*SCALE
+  };
+}
+
+function roleColor(role){
+  if(role==='takeoff') return 'var(--takeoff)';
+  if(role==='landing') return 'var(--landing)';
+  return 'var(--point)';
+}
+
+function renderSVG(){
+  const { points, obstacle, route } = state;
+  let s = '';
+  s += `<svg viewBox="0 0 ${SVG_W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<defs>
+    <pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="var(--obstacle)" stroke-width="3" opacity="0.55"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent-route)"/>
+    </marker>
+  </defs>`;
+
+  // background field panel
+  s += `<rect x="${PAD_L}" y="${PAD_T}" width="${FIELD_W*SCALE}" height="${FIELD_H*SCALE}" fill="var(--panel-2)" stroke="var(--grid-line-major)" stroke-width="1.5"/>`;
+
+  // grid lines (0.5m minor, 1m major)
+  for(let gx=0; gx<=FIELD_W*2; gx++){
+    const xm = gx*0.5;
+    const px = PAD_L + xm*SCALE;
+    const major = (gx % 2 === 0);
+    s += `<line x1="${px}" y1="${PAD_T}" x2="${px}" y2="${PAD_T+FIELD_H*SCALE}" stroke="${major?'var(--grid-line-major)':'var(--grid-line)'}" stroke-width="${major?1:0.6}"/>`;
+    if(major){
+      s += `<text x="${px}" y="${PAD_T+FIELD_H*SCALE+16}" fill="var(--text-secondary)" font-family="var(--mono)" font-size="10" text-anchor="middle">${xm}m</text>`;
+    }
+  }
+  for(let gy=0; gy<=FIELD_H*2; gy++){
+    const ym = gy*0.5;
+    const py = PAD_T + (FIELD_H-ym)*SCALE;
+    const major = (gy % 2 === 0);
+    s += `<line x1="${PAD_L}" y1="${py}" x2="${PAD_L+FIELD_W*SCALE}" y2="${py}" stroke="${major?'var(--grid-line-major)':'var(--grid-line)'}" stroke-width="${major?1:0.6}"/>`;
+    if(major){
+      s += `<text x="${PAD_L-10}" y="${py+3}" fill="var(--text-secondary)" font-family="var(--mono)" font-size="10" text-anchor="end">${ym}m</text>`;
+    }
+  }
+
+  // obstacle
+  const op = toPx({x:obstacle.x, y:obstacle.y+obstacle.size});
+  s += `<rect x="${op.x}" y="${op.y}" width="${obstacle.size*SCALE}" height="${obstacle.size*SCALE}" fill="url(#hatch)" stroke="var(--obstacle)" stroke-width="1.5"/>`;
+
+  // route path (dashed line + direction arrow + midpoint dots) — toggleable
+  if(route && route.length && state.showPath){
+    const path = route.map(toPx).map(p=>`${p.x},${p.y}`).join(' ');
+    s += `<polyline points="${path}" fill="none" stroke="var(--accent-route)" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrow)"/>`;
+    for(let i=0;i<route.length-1;i++){
+      const a = toPx(route[i]), b = toPx(route[i+1]);
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      s += `<circle cx="${mx}" cy="${my}" r="2.5" fill="var(--accent-route)"/>`;
+    }
+  }
+
+  // sequence badges for route order
+  if(route && route.length){
+    route.forEach((pt, i)=>{
+      const p = toPx(pt);
+      const bx = p.x + POINT_R*SCALE*0.85;
+      const by = p.y - POINT_R*SCALE*0.85;
+      s += `<circle cx="${bx}" cy="${by}" r="9" fill="var(--accent-route)"/>`;
+      s += `<text x="${bx}" y="${by+3.5}" fill="#0A0E14" font-family="var(--mono)" font-size="10" font-weight="700" text-anchor="middle">${i+1}</text>`;
+    });
+  }
+
+  // points
+  points.forEach(pt=>{
+    const p = toPx(pt);
+    const r = POINT_R*SCALE;
+    const color = roleColor(pt.role);
+    s += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="var(--point-fill)" stroke="${color}" stroke-width="2.5"/>`;
+    s += `<text x="${p.x}" y="${p.y+4}" fill="${color}" font-family="var(--mono)" font-size="12" font-weight="700" text-anchor="middle">${pt.label}</text>`;
+  });
+
+  s += `</svg>`;
+  document.getElementById('svgHolder').innerHTML = s;
+}
+
+function renderPanels(){
+  const { points, obstacle, route } = state;
+
+  // points table
+  const rows = points
+    .slice()
+    .sort((a,b)=>{
+      const order = {takeoff:0, landing:1, normal:2};
+      if(order[a.role]!==order[b.role]) return order[a.role]-order[b.role];
+      return Number(a.label)-Number(b.label);
+    })
+    .map(p=>{
+      const roleName = p.role==='takeoff' ? 'Take-off' : p.role==='landing' ? 'Landing' : 'Waypoint';
+      return `<tr>
+        <td class="role-${p.role}">${p.label}</td>
+        <td>${p.x.toFixed(2)}</td>
+        <td>${p.y.toFixed(2)}</td>
+        <td class="role-${p.role}">${roleName}</td>
+      </tr>`;
+    }).join('');
+  document.getElementById('pointsTable').innerHTML = `
+    <tr><th>Pt</th><th>X (m)</th><th>Y (m)</th><th>Role</th></tr>
+    ${rows}
+  `;
+
+  // obstacle info
+  document.getElementById('obstacleInfo').innerHTML = `
+    Bottom-left corner: <b>(${obstacle.x.toFixed(2)}, ${obstacle.y.toFixed(2)})</b><br>
+    Size: <b>0.30m × 0.30m</b><br>
+    Center: <b>(${(obstacle.x+obstacle.size/2).toFixed(2)}, ${(obstacle.y+obstacle.size/2).toFixed(2)})</b>
+  `;
+
+  // route list
+  let total = 0;
+  const items = [];
+  for(let i=0;i<route.length-1;i++){
+    const a = route[i], b = route[i+1];
+    const d = dist(a,b);
+    total += d;
+    items.push(`<li><span><span class="leg-num">${i+1}→${i+2}</span>${a.label} → ${b.label}</span><span class="dist">${d.toFixed(2)}m</span></li>`);
+  }
+  document.getElementById('routeList').innerHTML = items.join('');
+  document.getElementById('totalDist').textContent = `${total.toFixed(2)}m`;
+}
+
+function render(){
+  renderSVG();
+  renderPanels();
+}
+
+// ---------- Actions ----------
+function resetAll(){
+  state.obstacle = generateObstacle();
+  state.points = generatePoints(state.obstacle);
+  state.route = generateRoute(state.points, state.obstacle);
+  render();
+}
+
+function newRoute(){
+  state.route = generateRoute(state.points, state.obstacle);
+  render();
+}
+
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+document.getElementById('newRouteBtn').addEventListener('click', newRoute);
+document.getElementById('togglePathBtn').addEventListener('click', ()=>{
+  state.showPath = !state.showPath;
+  document.getElementById('togglePathBtn').textContent = state.showPath ? 'Hide Path Line' : 'Show Path Line';
+  render();
+});
+
+const wrapEl = document.getElementById('fieldPanel');
+const fsBtn = document.getElementById('fullscreenBtn');
+
+function isFullscreen(){
+  return document.fullscreenElement || document.webkitFullscreenElement;
+}
+
+fsBtn.addEventListener('click', ()=>{
+  if(!isFullscreen()){
+    if(wrapEl.requestFullscreen) wrapEl.requestFullscreen();
+    else if(wrapEl.webkitRequestFullscreen) wrapEl.webkitRequestFullscreen();
+  } else {
+    if(document.exitFullscreen) document.exitFullscreen();
+    else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+});
+
+function syncFsLabel(){
+  fsBtn.textContent = isFullscreen() ? 'Exit Full Screen' : 'Full Screen';
+}
+document.addEventListener('fullscreenchange', syncFsLabel);
+document.addEventListener('webkitfullscreenchange', syncFsLabel);
+
+// ---------- Init ----------
+resetAll();
+</script>
+</body>
+</html>
