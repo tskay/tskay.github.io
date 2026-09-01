@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Drone Test Field — Route Planner</title>
-<style>  
+<style>
   :root{
     --bg: #0A0E14;
     --panel: #0F1620;
@@ -110,6 +110,22 @@
     font-family:var(--mono);
   }
   .btns{display:flex; gap:10px;}
+  .obstacle-control{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--text-secondary);
+    letter-spacing:.04em;
+  }
+  .obstacle-control label{white-space:nowrap;}
+  .obstacle-control #obstacleCountLabel{color:var(--obstacle); font-weight:700;}
+  .obstacle-control input[type="range"]{
+    accent-color: var(--accent-route);
+    width:110px;
+    cursor:pointer;
+  }
   button{
     font-family:var(--mono);
     font-size:12px;
@@ -233,6 +249,10 @@
     <div class="panel field-panel" id="fieldPanel">
       <div class="toolbar">
         <div class="section-label" style="margin:0; flex:1;">Cartesian Plane</div>
+        <div class="obstacle-control">
+          <label for="obstacleCount">Obstacles: <span id="obstacleCountLabel">1</span></label>
+          <input type="range" id="obstacleCount" min="1" max="5" step="1" value="1">
+        </div>
         <div class="btns">
           <button id="fullscreenBtn">Full Screen</button>
           <button id="togglePathBtn">Hide Path Line</button>
@@ -284,7 +304,7 @@ const PAD_L = 46, PAD_R = 20, PAD_T = 20, PAD_B = 40;
 const SVG_W = FIELD_W*SCALE + PAD_L + PAD_R;
 const SVG_H = FIELD_H*SCALE + PAD_T + PAD_B;
 
-let state = { points: [], obstacle: null, route: [], showPath: true };
+let state = { points: [], obstacles: [], route: [], showPath: true };
 
 // ---------- Helpers ----------
 function rand(min, max){ return Math.random()*(max-min)+min; }
@@ -318,22 +338,46 @@ function segRectIntersect(p1,p2,rect){
 }
 
 // ---------- Generation ----------
-function generateObstacle(){
-  return {
-    x: rand(0.3, FIELD_W - OBST_SIZE - 0.3),
-    y: rand(0.3, FIELD_H - OBST_SIZE - 0.3),
-    size: OBST_SIZE
-  };
+function rectRectOverlap(a, b, buffer){
+  return !(
+    a.x + a.size + buffer <= b.x ||
+    b.x + b.size + buffer <= a.x ||
+    a.y + a.size + buffer <= b.y ||
+    b.y + b.size + buffer <= a.y
+  );
 }
 
-function generatePoints(obstacle){
+function generateObstacles(count){
+  const obstacles = [];
+  let attempts = 0;
+  while(obstacles.length < count && attempts < 8000){
+    attempts++;
+    const candidate = {
+      x: rand(0.3, FIELD_W - OBST_SIZE - 0.3),
+      y: rand(0.3, FIELD_H - OBST_SIZE - 0.3),
+      size: OBST_SIZE
+    };
+    let ok = true;
+    for(const o of obstacles){
+      if(rectRectOverlap(candidate, o, 0.35)){ ok = false; break; }
+    }
+    if(ok) obstacles.push(candidate);
+  }
+  return obstacles;
+}
+
+function circleAnyRectOverlap(cx, cy, r, obstacles){
+  return obstacles.some(rect => circleRectOverlap(cx, cy, r, rect));
+}
+
+function generatePoints(obstacles){
   const pts = [];
   let attempts = 0;
   while(pts.length < N_POINTS && attempts < 8000){
     attempts++;
     const x = rand(POINT_R+0.05, FIELD_W-POINT_R-0.05);
     const y = rand(POINT_R+0.05, FIELD_H-POINT_R-0.05);
-    if(circleRectOverlap(x, y, POINT_R+0.1, obstacle)) continue;
+    if(circleAnyRectOverlap(x, y, POINT_R+0.1, obstacles)) continue;
     let ok = true;
     for(const p of pts){
       if(dist(p,{x,y}) < MIN_SEP){ ok=false; break; }
@@ -352,23 +396,13 @@ function generatePoints(obstacle){
   });
 }
 
-function generateRoute(points, obstacle){
+function generateRoute(points, obstacles){
   const takeoff = points.find(p=>p.role==='takeoff');
   const landing = points.find(p=>p.role==='landing');
   const normals = points.filter(p=>p.role==='normal');
 
-  let best = null;
-  for(let attempt=0; attempt<300; attempt++){
-    const chosen = shuffle(normals).slice(0,4);
-    const seq = [takeoff, ...chosen, landing];
-    let crosses = false;
-    for(let i=0;i<seq.length-1;i++){
-      if(segRectIntersect(seq[i], seq[i+1], obstacle)){ crosses = true; break; }
-    }
-    if(!crosses){ best = seq; break; }
-    if(!best) best = seq; // fallback if nothing clean found
-  }
-  return best;
+  const chosen = shuffle(normals).slice(0,4);
+  return [takeoff, ...chosen, landing];
 }
 
 // ---------- Rendering ----------
@@ -386,7 +420,7 @@ function roleColor(role){
 }
 
 function renderSVG(){
-  const { points, obstacle, route } = state;
+  const { points, obstacles, route } = state;
   let s = '';
   s += `<svg viewBox="0 0 ${SVG_W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg">`;
   s += `<defs>
@@ -421,9 +455,11 @@ function renderSVG(){
     }
   }
 
-  // obstacle
-  const op = toPx({x:obstacle.x, y:obstacle.y+obstacle.size});
-  s += `<rect x="${op.x}" y="${op.y}" width="${obstacle.size*SCALE}" height="${obstacle.size*SCALE}" fill="url(#hatch)" stroke="var(--obstacle)" stroke-width="1.5"/>`;
+  // obstacles
+  obstacles.forEach(obstacle=>{
+    const op = toPx({x:obstacle.x, y:obstacle.y+obstacle.size});
+    s += `<rect x="${op.x}" y="${op.y}" width="${obstacle.size*SCALE}" height="${obstacle.size*SCALE}" fill="url(#hatch)" stroke="var(--obstacle)" stroke-width="1.5"/>`;
+  });
 
   // route path (dashed line + direction arrow + midpoint dots) — toggleable
   if(route && route.length && state.showPath){
@@ -461,7 +497,7 @@ function renderSVG(){
 }
 
 function renderPanels(){
-  const { points, obstacle, route } = state;
+  const { points, obstacles, route } = state;
 
   // points table
   const rows = points
@@ -486,11 +522,14 @@ function renderPanels(){
   `;
 
   // obstacle info
-  document.getElementById('obstacleInfo').innerHTML = `
-    Bottom-left corner: <b>(${obstacle.x.toFixed(2)}, ${obstacle.y.toFixed(2)})</b><br>
-    Size: <b>0.30m × 0.30m</b><br>
-    Center: <b>(${(obstacle.x+obstacle.size/2).toFixed(2)}, ${(obstacle.y+obstacle.size/2).toFixed(2)})</b>
-  `;
+  document.getElementById('obstacleInfo').innerHTML = obstacles.map((o,i)=>`
+    <div style="margin-bottom:${i<obstacles.length-1?'10px':'0'};">
+      <b>Obstacle ${i+1}</b><br>
+      Bottom-left corner: <b>(${o.x.toFixed(2)}, ${o.y.toFixed(2)})</b><br>
+      Size: <b>0.30m × 0.30m</b><br>
+      Center: <b>(${(o.x+o.size/2).toFixed(2)}, ${(o.y+o.size/2).toFixed(2)})</b>
+    </div>
+  `).join('');
 
   // route list
   let total = 0;
@@ -512,14 +551,15 @@ function render(){
 
 // ---------- Actions ----------
 function resetAll(){
-  state.obstacle = generateObstacle();
-  state.points = generatePoints(state.obstacle);
-  state.route = generateRoute(state.points, state.obstacle);
+  const count = parseInt(document.getElementById('obstacleCount').value, 10);
+  state.obstacles = generateObstacles(count);
+  state.points = generatePoints(state.obstacles);
+  state.route = generateRoute(state.points, state.obstacles);
   render();
 }
 
 function newRoute(){
-  state.route = generateRoute(state.points, state.obstacle);
+  state.route = generateRoute(state.points, state.obstacles);
   render();
 }
 
@@ -529,6 +569,13 @@ document.getElementById('togglePathBtn').addEventListener('click', ()=>{
   state.showPath = !state.showPath;
   document.getElementById('togglePathBtn').textContent = state.showPath ? 'Hide Path Line' : 'Show Path Line';
   render();
+});
+
+const obstacleCountInput = document.getElementById('obstacleCount');
+const obstacleCountLabel = document.getElementById('obstacleCountLabel');
+obstacleCountInput.addEventListener('input', ()=>{
+  obstacleCountLabel.textContent = obstacleCountInput.value;
+  resetAll();
 });
 
 const wrapEl = document.getElementById('fieldPanel');
