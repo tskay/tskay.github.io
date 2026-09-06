@@ -19,6 +19,7 @@
     --point-fill: #0B1B26;
     --obstacle: #EF4444;
     --curve: #22D3EE;
+    --measure: #F472B6;
     --text-primary: #E7ECF3;
     --text-secondary: #7C8797;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -215,6 +216,11 @@
     border-radius:3px;
   }
   .pt-coord:focus{ border-color:var(--point); outline:none; }
+  .cell-selected{
+    background: rgba(56,189,248,0.28) !important;
+    outline: 2px solid var(--point) !important;
+    outline-offset: -1px;
+  }
 
   .route-list{
     font-family:var(--mono);
@@ -312,6 +318,13 @@
           <button id="clearCurveBtn">Clear Curve</button>
         </div>
       </div>
+      <div class="toolbar" style="margin-top:-6px;">
+        <div class="section-label" style="margin:0; flex:1;">Relative Measurement (2-Point + Heading)</div>
+        <div class="btns">
+          <button id="measureBtn">Measure Points</button>
+          <button id="clearMeasureBtn">Clear Measurement</button>
+        </div>
+      </div>
       <div id="svgHolder"></div>
       <div class="legend">
         <span><i class="swatch" style="background:var(--takeoff)"></i>Take-off</span>
@@ -320,6 +333,8 @@
         <span><i class="swatch sq" style="background:var(--obstacle)"></i>Obstacle (0.3m × 0.3m)</span>
         <span><i class="swatch sq" style="background:var(--accent-route)"></i>Route</span>
         <span><i class="swatch" style="background:var(--curve)"></i>Flight Curve (A→B→C)</span>
+        <span><i class="swatch sq" style="background:var(--grid-line-major); opacity:0.6;"></i>T/L Buffer Zone (1m)</span>
+        <span><i class="swatch" style="background:var(--measure)"></i>Relative Measurement (P1→P2)</span>
       </div>
     </div>
 
@@ -328,7 +343,31 @@
         <div class="section-label">Points</div>
         <table id="pointsTable"></table>
         <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
-          New frame · X: 0 to 4m · Y: −5 to 0m · press Enter or click away to apply
+          New frame · X: 0 to 4m · Y: −5 to 0m · Take-off/Landing may be dragged/edited into the 1m buffer zone on all sides (X: −1 to 5, Y: −6 to 1) · press Enter or click away to apply
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-label">Curve Point Coordinates (m)</div>
+        <div class="coord-grid">
+          <div class="coord-row">
+            <span class="coord-label" style="color:var(--curve)">A</span>
+            <label>X <input type="number" id="ptA_x" step="0.01" min="-1" max="5"></label>
+            <label>Y <input type="number" id="ptA_y" step="0.01" min="-6" max="1"></label>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label" style="color:var(--curve)">B</span>
+            <label>X <input type="number" id="ptB_x" step="0.01" min="-1" max="5"></label>
+            <label>Y <input type="number" id="ptB_y" step="0.01" min="-6" max="1"></label>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label" style="color:var(--curve)">C</span>
+            <label>X <input type="number" id="ptC_x" step="0.01" min="-1" max="5"></label>
+            <label>Y <input type="number" id="ptC_y" step="0.01" min="-6" max="1"></label>
+          </div>
+        </div>
+        <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
+          New frame · X: −1 to 5m · Y: −6 to 1m (includes the 1m buffer zone) · press Enter or click away to apply
         </div>
       </div>
 
@@ -344,32 +383,13 @@
       </div>
 
       <div class="panel">
-        <div class="section-label">Curve Point Coordinates (m)</div>
-        <div class="coord-grid">
-          <div class="coord-row">
-            <span class="coord-label" style="color:var(--curve)">A</span>
-            <label>X <input type="number" id="ptA_x" step="0.01" min="0" max="4"></label>
-            <label>Y <input type="number" id="ptA_y" step="0.01" min="-5" max="0"></label>
-          </div>
-          <div class="coord-row">
-            <span class="coord-label" style="color:var(--curve)">B</span>
-            <label>X <input type="number" id="ptB_x" step="0.01" min="0" max="4"></label>
-            <label>Y <input type="number" id="ptB_y" step="0.01" min="-5" max="0"></label>
-          </div>
-          <div class="coord-row">
-            <span class="coord-label" style="color:var(--curve)">C</span>
-            <label>X <input type="number" id="ptC_x" step="0.01" min="0" max="4"></label>
-            <label>Y <input type="number" id="ptC_y" step="0.01" min="-5" max="0"></label>
-          </div>
-        </div>
-        <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
-          New frame · X: 0 to 4m · Y: −5 to 0m · press Enter or click away to apply
-        </div>
+        <div class="section-label">Flight Curve</div>
+        <div class="curve-info" id="curveInfo">Click <b>Plot Curve</b>, then tap 3 points on the field to define a circular flight path through them.</div>
       </div>
 
       <div class="panel">
-        <div class="section-label">Flight Curve</div>
-        <div class="curve-info" id="curveInfo">Click <b>Plot Curve</b>, then tap 3 points on the field to define a circular flight path through them.</div>
+        <div class="section-label">Relative Measurement</div>
+        <div class="curve-info" id="measureInfo">Click <b>Measure Points</b>, then tap 2 points on the field. Drag the two levers at P1 to set a heading — relative coordinates update to match.</div>
       </div>
     </div>
   </div>
@@ -377,23 +397,37 @@
 
 <script>
 // ---------- Config ----------
-const FIELD_W = 5.0;   // meters
-const FIELD_H = 4.0;   // meters
+const FIELD_W = 5.0;   // meters (official course width)
+const FIELD_H = 4.0;   // meters (official course height)
+const EXT_LEFT = 1.0;  // meters — buffer zone extending left, for take-off/landing only
+const EXT_DOWN = 1.0;  // meters — buffer zone extending down, for take-off/landing only
+const EXT_TOP = 1.0;   // meters — buffer zone extending up, for take-off/landing only
+const EXT_RIGHT = 1.0; // meters — buffer zone extending right, for take-off/landing only
 const POINT_R = 0.15;  // meters (30cm diameter)
 const OBST_SIZE = 0.3; // meters
 const N_POINTS = 12;
 const MIN_SEP = 0.5;   // min center-to-center distance between points
+const MARGIN = POINT_R + 0.05; // keep-out margin from any hard edge
 const SCALE = 110;     // px per meter
 const PAD_L = 46, PAD_R = 20, PAD_T = 20, PAD_B = 40;
 
-const SVG_W = FIELD_W*SCALE + PAD_L + PAD_R;
-const SVG_H = FIELD_H*SCALE + PAD_T + PAD_B;
+const SVG_W = (FIELD_W+EXT_LEFT+EXT_RIGHT)*SCALE + PAD_L + PAD_R;
+const SVG_H = (FIELD_H+EXT_DOWN+EXT_TOP)*SCALE + PAD_T + PAD_B;
 
 let state = {
   points: [], obstacles: [], route: [], showPath: true,
   curveMode: false, curvePoints: [], curveResult: null, speed: 0.30, // m/s (slider is in cm/s)
-  readoutPos: null // {x,y} top-left of the draggable readout box, in SVG user units
+  readoutPos: null, // {x,y} top-left of the draggable curve readout box, in SVG user units
+
+  measureMode: false, measurePoints: [],   // up to 2 points, in field meters
+  headingLeverA: 0,     // degrees, compass-style (0=up/north, 90=right/east...), snapped to 90s
+  headingLeverB: 0,     // degrees, relative to lever A, range (-180,180]
+  measureReadoutPos: null
 };
+
+const LEVER_LEN_A = 72; // px — primary (reference) heading lever, longer
+const LEVER_LEN_B = 46; // px — secondary (relative) lever, shorter so it never hides lever A's handle
+const LEVER_A_SNAP_TOLERANCE = 2; // degrees — lever A only snaps to a 90° mark if released within this of one
 
 // thresholds for flight-curve warnings
 const LIMIT_RADIUS = 10;      // meters
@@ -430,6 +464,43 @@ function fromDroneXY(pt){
 function fmt2(v){
   const s = v.toFixed(2);
   return s === '-0.00' ? '0.00' : s;
+}
+
+// ---------- Heading / relative-measurement math ----------
+// Compass-style bearing: 0 = up (old +Y / new +X), 90 = right (old +X), 180 = down, 270 = left.
+// This matches the visual "up = forward" default already used by the coordinate frame.
+function normalizeDeg(a){
+  a = a % 360;
+  if(a < 0) a += 360;
+  return a;
+}
+// Wraps to (-180, 180]
+function normalizeSigned(a){
+  a = normalizeDeg(a);
+  if(a > 180) a -= 360;
+  return a;
+}
+function bearingOf(dx, dy){
+  return normalizeDeg(Math.atan2(dx, dy) * 180/Math.PI);
+}
+// Relative (forward/lateral) coordinates of B seen from A, facing the given compass heading.
+// Reduces exactly to relDroneXY(B,A) when headingDeg = 0.
+function computeHeadingRelative(A, B, headingDeg){
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const r = Math.hypot(dx, dy);
+  const bearing = bearingOf(dx, dy);
+  const phi = (bearing - headingDeg) * Math.PI/180;
+  return {
+    r,
+    bearing,
+    forwardX: r*Math.cos(phi),
+    lateralY: -r*Math.sin(phi)
+  };
+}
+// Screen-pixel endpoint of a lever of given length, pointing at a compass bearing, from a pixel origin
+function leverEndpointPx(originPx, bearingDeg, lengthPx){
+  const rad = bearingDeg * Math.PI/180;
+  return { x: originPx.x + lengthPx*Math.sin(rad), y: originPx.y - lengthPx*Math.cos(rad) };
 }
 
 function circleRectOverlap(cx, cy, r, rect){
@@ -492,11 +563,17 @@ function sampleArc(center, radius, startAngle, direction, arcAngle, n=72){
   return pts;
 }
 
-function computeWarnings(radius, arcLength, time){
+function isOutOfCourseBounds(pt){
+  const eps = 1e-9;
+  return pt.x < -EXT_LEFT-eps || pt.x > FIELD_W+EXT_RIGHT+eps || pt.y < -EXT_DOWN-eps || pt.y > FIELD_H+EXT_TOP+eps;
+}
+
+function computeWarnings(radius, arcLength, time, outOfBounds){
   const warnings = [];
   if(radius > LIMIT_RADIUS) warnings.push(`Radius ${radius.toFixed(2)}m exceeds the ${LIMIT_RADIUS}m limit`);
   if(arcLength > LIMIT_ARC_LENGTH) warnings.push(`Arc length ${arcLength.toFixed(2)}m exceeds the ${LIMIT_ARC_LENGTH}m limit`);
   if(time > LIMIT_TIME) warnings.push(`Flight time ${time.toFixed(2)}s exceeds the ${LIMIT_TIME}s limit`);
+  if(outOfBounds) warnings.push(`Curve extends beyond the field (including buffer zone)`);
   return warnings;
 }
 
@@ -510,15 +587,19 @@ function evaluateCurve(){
   const { startAngle, direction, arcAngle } = computeArcThroughB(A,B,C,circle);
   const arcLength = circle.radius * arcAngle;
   const time = arcLength / state.speed;
+  const path = sampleArc(circle.center, circle.radius, startAngle, direction, arcAngle);
+  const outOfBounds = path.some(isOutOfCourseBounds);
   state.curveResult = {
     center: circle.center,
     radius: circle.radius,
     arcLength,
     time,
-    warnings: computeWarnings(circle.radius, arcLength, time),
-    path: sampleArc(circle.center, circle.radius, startAngle, direction, arcAngle)
+    outOfBounds,
+    warnings: computeWarnings(circle.radius, arcLength, time, outOfBounds),
+    path
   };
 }
+
 
 // ---------- Generation ----------
 function rectRectOverlap(a, b, buffer){
@@ -554,29 +635,49 @@ function circleAnyRectOverlap(cx, cy, r, obstacles){
 }
 
 function generatePoints(obstacles){
-  const pts = [];
+  // 10 normal waypoints — confined to the official 5m x 4m course
+  const normals = [];
   let attempts = 0;
-  while(pts.length < N_POINTS && attempts < 8000){
+  while(normals.length < N_POINTS-2 && attempts < 8000){
     attempts++;
-    const x = rand(POINT_R+0.05, FIELD_W-POINT_R-0.05);
-    const y = rand(POINT_R+0.05, FIELD_H-POINT_R-0.05);
+    const x = rand(MARGIN, FIELD_W-MARGIN);
+    const y = rand(MARGIN, FIELD_H-MARGIN);
     if(circleAnyRectOverlap(x, y, POINT_R+0.1, obstacles)) continue;
     let ok = true;
-    for(const p of pts){
+    for(const p of normals){
       if(dist(p,{x,y}) < MIN_SEP){ ok=false; break; }
     }
-    if(ok) pts.push({x,y});
+    if(ok) normals.push({x,y});
   }
-  // Assign roles
-  const order = shuffle(pts.map((_,i)=>i));
-  const takeoffIdx = order[0];
-  const landingIdx = order[1];
-  let normalCount = 1;
-  return pts.map((p,i)=>{
-    if(i === takeoffIdx) return {...p, id:i, role:'takeoff', label:'T'};
-    if(i === landingIdx) return {...p, id:i, role:'landing', label:'L'};
-    return {...p, id:i, role:'normal', label: String(normalCount++)};
+
+  // Take-off / landing — allowed to randomly fall in the 1m buffer zone (left/down) as well
+  function placeSpecial(existing){
+    let a = 0;
+    while(a < 8000){
+      a++;
+      const x = rand(-EXT_LEFT+MARGIN, FIELD_W+EXT_RIGHT-MARGIN);
+      const y = rand(-EXT_DOWN+MARGIN, FIELD_H+EXT_TOP-MARGIN);
+      if(circleAnyRectOverlap(x, y, POINT_R+0.1, obstacles)) continue;
+      let ok = true;
+      for(const p of existing){
+        if(dist(p,{x,y}) < MIN_SEP){ ok=false; break; }
+      }
+      if(ok) return {x,y};
+    }
+    return { x: rand(-EXT_LEFT+MARGIN, FIELD_W+EXT_RIGHT-MARGIN), y: rand(-EXT_DOWN+MARGIN, FIELD_H+EXT_TOP-MARGIN) };
+  }
+
+  const takeoffPos = placeSpecial(normals);
+  const landingPos = placeSpecial([...normals, takeoffPos]);
+
+  let id = 0;
+  const result = [];
+  result.push({ ...takeoffPos, id: id++, role:'takeoff', label:'T' });
+  result.push({ ...landingPos, id: id++, role:'landing', label:'L' });
+  shuffle(normals).forEach((p,i)=>{
+    result.push({ ...p, id: id++, role:'normal', label: String(i+1) });
   });
+  return result;
 }
 
 function generateRoute(points, obstacles){
@@ -591,8 +692,8 @@ function generateRoute(points, obstacles){
 // ---------- Rendering ----------
 function toPx(pt){
   return {
-    x: PAD_L + pt.x*SCALE,
-    y: PAD_T + (FIELD_H - pt.y)*SCALE
+    x: PAD_L + (pt.x + EXT_LEFT)*SCALE,
+    y: PAD_T + (FIELD_H + EXT_TOP - pt.y)*SCALE
   };
 }
 
@@ -610,10 +711,125 @@ function roleColor(role){
 function attachSvgClickHandler(){
   const svgEl = document.querySelector('#svgHolder svg');
   if(!svgEl) return;
-  svgEl.style.cursor = state.curveMode ? 'crosshair' : 'default';
+  svgEl.style.cursor = (state.curveMode || state.measureMode) ? 'crosshair' : 'default';
   svgEl.addEventListener('click', handleSvgClick);
   attachReadoutDrag(svgEl);
   attachCurvePointDrag(svgEl);
+  attachMissionPointDrag(svgEl);
+  attachObstacleDrag(svgEl);
+  attachMeasurePointDrag(svgEl);
+  attachLeverDrag(svgEl);
+  attachMeasureReadoutDrag(svgEl);
+}
+
+function attachMissionPointDrag(svgEl){
+  const handles = svgEl.querySelectorAll('.mission-point-handle');
+  if(!handles.length) return;
+
+  handles.forEach(handle=>{
+    const id = parseInt(handle.getAttribute('data-id'), 10);
+    let dragging = false;
+
+    function onPointerDown(e){
+      dragging = true;
+      e.preventDefault();
+      e.stopPropagation();
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    }
+    function onPointerMove(e){
+      if(!dragging) return;
+      const liveSvg = document.querySelector('#svgHolder svg');
+      if(!liveSvg) return;
+      const pt = state.points.find(p=>p.id === id);
+      if(!pt) return;
+
+      const rect = liveSvg.getBoundingClientRect();
+      const scaleX = SVG_W / rect.width;
+      const scaleY = SVG_H / rect.height;
+      const svgX = (e.clientX - rect.left) * scaleX;
+      const svgY = (e.clientY - rect.top) * scaleY;
+      const mx = (svgX - PAD_L) / SCALE - EXT_LEFT;
+      const my = FIELD_H + EXT_TOP - (svgY - PAD_T) / SCALE;
+
+      const isSpecial = pt.role === 'takeoff' || pt.role === 'landing';
+      const minX = isSpecial ? -EXT_LEFT+MARGIN : MARGIN;
+      const minY = isSpecial ? -EXT_DOWN+MARGIN : MARGIN;
+      const maxX = isSpecial ? FIELD_W+EXT_RIGHT-MARGIN : FIELD_W-MARGIN;
+      const maxY = isSpecial ? FIELD_H+EXT_TOP-MARGIN : FIELD_H-MARGIN;
+
+      pt.x = clamp(mx, minX, maxX);
+      pt.y = clamp(my, minY, maxY);
+      render();
+    }
+    function onPointerUp(){
+      if(!dragging) return;
+      dragging = false;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    }
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('click', (e)=> e.stopPropagation());
+  });
+}
+
+function attachObstacleDrag(svgEl){
+  const handles = svgEl.querySelectorAll('.obstacle-handle');
+  if(!handles.length) return;
+
+  handles.forEach(handle=>{
+    const index = parseInt(handle.getAttribute('data-index'), 10);
+    let dragging = false;
+    let grabOffsetX = 0, grabOffsetY = 0;
+
+    function pointerToField(e, liveSvg){
+      const rect = liveSvg.getBoundingClientRect();
+      const scaleX = SVG_W / rect.width;
+      const scaleY = SVG_H / rect.height;
+      const svgX = (e.clientX - rect.left) * scaleX;
+      const svgY = (e.clientY - rect.top) * scaleY;
+      return {
+        x: (svgX - PAD_L) / SCALE - EXT_LEFT,
+        y: FIELD_H + EXT_TOP - (svgY - PAD_T) / SCALE
+      };
+    }
+
+    function onPointerDown(e){
+      const liveSvg = document.querySelector('#svgHolder svg');
+      const obstacle = state.obstacles[index];
+      if(!liveSvg || !obstacle) return;
+      dragging = true;
+      const p = pointerToField(e, liveSvg);
+      // remember where within the obstacle it was grabbed, so it doesn't jump to snap its corner to the cursor
+      grabOffsetX = p.x - obstacle.x;
+      grabOffsetY = p.y - obstacle.y;
+      e.preventDefault();
+      e.stopPropagation();
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    }
+    function onPointerMove(e){
+      if(!dragging) return;
+      const liveSvg = document.querySelector('#svgHolder svg');
+      if(!liveSvg) return;
+      const obstacle = state.obstacles[index];
+      if(!obstacle) return;
+      const p = pointerToField(e, liveSvg);
+      obstacle.x = clamp(p.x - grabOffsetX, 0, FIELD_W - obstacle.size);
+      obstacle.y = clamp(p.y - grabOffsetY, 0, FIELD_H - obstacle.size);
+      render();
+    }
+    function onPointerUp(){
+      if(!dragging) return;
+      dragging = false;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    }
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('click', (e)=> e.stopPropagation());
+  });
 }
 
 function attachCurvePointDrag(svgEl){
@@ -640,8 +856,8 @@ function attachCurvePointDrag(svgEl){
       const scaleY = SVG_H / rect.height;
       const svgX = (e.clientX - rect.left) * scaleX;
       const svgY = (e.clientY - rect.top) * scaleY;
-      const mx = clamp((svgX - PAD_L) / SCALE, 0, FIELD_W);
-      const my = clamp(FIELD_H - (svgY - PAD_T) / SCALE, 0, FIELD_H);
+      const mx = clamp((svgX - PAD_L) / SCALE - EXT_LEFT, -EXT_LEFT, FIELD_W+EXT_RIGHT);
+      const my = clamp(FIELD_H + EXT_TOP - (svgY - PAD_T) / SCALE, -EXT_DOWN, FIELD_H+EXT_TOP);
       state.curvePoints[index] = { x: mx, y: my };
       if(state.curvePoints.length === 3) evaluateCurve();
       render();
@@ -707,8 +923,164 @@ function attachReadoutDrag(svgEl){
   box.addEventListener('click', (e)=> e.stopPropagation());
 }
 
+function attachMeasureReadoutDrag(svgEl){
+  const box = svgEl.querySelector('#measureReadoutBox');
+  if(!box) return;
+
+  function getTranslate(){
+    const t = box.getAttribute('transform') || '';
+    const m = t.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+    return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
+  }
+
+  let dragging = false;
+  let startClientX = 0, startClientY = 0, startBx = 0, startBy = 0, scaleX = 1, scaleY = 1, boxW = 0, boxH = 0;
+
+  function onPointerDown(e){
+    dragging = true;
+    const rect = svgEl.getBoundingClientRect();
+    scaleX = SVG_W / rect.width;
+    scaleY = SVG_H / rect.height;
+    startClientX = e.clientX;
+    startClientY = e.clientY;
+    const cur = getTranslate();
+    startBx = cur.x; startBy = cur.y;
+    const bbox = box.getBBox();
+    boxW = bbox.width; boxH = bbox.height;
+    e.preventDefault();
+    e.stopPropagation();
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }
+  function onPointerMove(e){
+    if(!dragging) return;
+    const dx = (e.clientX - startClientX) * scaleX;
+    const dy = (e.clientY - startClientY) * scaleY;
+    const nx = clamp(startBx + dx, 0, SVG_W - boxW);
+    const ny = clamp(startBy + dy, 0, SVG_H - boxH);
+    box.setAttribute('transform', `translate(${nx},${ny})`);
+  }
+  function onPointerUp(){
+    if(!dragging) return;
+    dragging = false;
+    state.measureReadoutPos = getTranslate();
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+  }
+
+  box.addEventListener('pointerdown', onPointerDown);
+  box.addEventListener('click', (e)=> e.stopPropagation());
+}
+
+function attachMeasurePointDrag(svgEl){
+  const handles = svgEl.querySelectorAll('.measure-point-handle');
+  if(!handles.length) return;
+
+  handles.forEach(handle=>{
+    const index = parseInt(handle.getAttribute('data-index'), 10);
+    let dragging = false;
+
+    function onPointerDown(e){
+      dragging = true;
+      e.preventDefault();
+      e.stopPropagation();
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    }
+    function onPointerMove(e){
+      if(!dragging) return;
+      const liveSvg = document.querySelector('#svgHolder svg');
+      if(!liveSvg) return;
+      const rect = liveSvg.getBoundingClientRect();
+      const scaleX = SVG_W / rect.width;
+      const scaleY = SVG_H / rect.height;
+      const svgX = (e.clientX - rect.left) * scaleX;
+      const svgY = (e.clientY - rect.top) * scaleY;
+      const mx = clamp((svgX - PAD_L)/SCALE - EXT_LEFT, -EXT_LEFT, FIELD_W+EXT_RIGHT);
+      const my = clamp(FIELD_H+EXT_TOP - (svgY - PAD_T)/SCALE, -EXT_DOWN, FIELD_H+EXT_TOP);
+      state.measurePoints[index] = { x: mx, y: my };
+      render();
+    }
+    function onPointerUp(){
+      if(!dragging) return;
+      dragging = false;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    }
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('click', (e)=> e.stopPropagation());
+  });
+}
+
+function attachLeverDrag(svgEl){
+  const leverA = svgEl.querySelector('.lever-a-handle');
+  const leverB = svgEl.querySelector('.lever-b-handle');
+  if(!leverA && !leverB) return;
+
+  function bearingFromPointer(e){
+    const liveSvg = document.querySelector('#svgHolder svg');
+    const originField = state.measurePoints[0];
+    if(!liveSvg || !originField) return null;
+    const rect = liveSvg.getBoundingClientRect();
+    const scaleX = SVG_W / rect.width;
+    const scaleY = SVG_H / rect.height;
+    const svgX = (e.clientX - rect.left) * scaleX;
+    const svgY = (e.clientY - rect.top) * scaleY;
+    const originPx = toPx(originField);
+    return bearingOf(svgX - originPx.x, -(svgY - originPx.y));
+  }
+
+  function setupDrag(handle, onMove, onRelease){
+    if(!handle) return;
+    let dragging = false;
+    let lastBearing = null;
+    function onPointerDown(e){
+      dragging = true;
+      e.preventDefault();
+      e.stopPropagation();
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    }
+    function onPointerMove(e){
+      if(!dragging) return;
+      const bearing = bearingFromPointer(e);
+      if(bearing === null) return;
+      lastBearing = bearing;
+      onMove(bearing);
+      render();
+    }
+    function onPointerUp(){
+      if(!dragging) return;
+      dragging = false;
+      if(onRelease && lastBearing !== null){
+        onRelease(lastBearing);
+        render();
+      }
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+    }
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('click', (e)=> e.stopPropagation());
+  }
+
+  // Lever A follows the cursor smoothly while dragging (live, unsnapped),
+  // then snaps to the nearest 90° only if released close enough to one (magnetic snap).
+  setupDrag(leverA,
+    (bearing)=>{ state.headingLeverA = bearing; },
+    (bearing)=>{
+      const nearest = Math.round(bearing/90)*90 % 360;
+      const diff = Math.abs(normalizeSigned(bearing - nearest));
+      state.headingLeverA = diff <= LEVER_A_SNAP_TOLERANCE ? nearest : normalizeDeg(bearing);
+    }
+  );
+  setupDrag(leverB, (bearing)=>{
+    state.headingLeverB = normalizeSigned(bearing - state.headingLeverA);
+  });
+}
+
 function handleSvgClick(evt){
-  if(!state.curveMode) return;
+  if(!state.curveMode && !state.measureMode) return;
   const svgEl = evt.currentTarget;
   const ctm = svgEl.getScreenCTM();
   if(!ctm) return;
@@ -716,17 +1088,30 @@ function handleSvgClick(evt){
   pt.x = evt.clientX;
   pt.y = evt.clientY;
   const loc = pt.matrixTransform(ctm.inverse());
-  const mx = (loc.x - PAD_L) / SCALE;
-  const my = FIELD_H - (loc.y - PAD_T) / SCALE;
-  if(mx < 0 || mx > FIELD_W || my < 0 || my > FIELD_H) return; // clicked outside the field
+  const mx = (loc.x - PAD_L) / SCALE - EXT_LEFT;
+  const my = FIELD_H + EXT_TOP - (loc.y - PAD_T) / SCALE;
 
-  state.curvePoints.push({x: mx, y: my});
-  if(state.curvePoints.length === 3){
-    state.curveMode = false;
-    evaluateCurve();
+  if(state.curveMode){
+    if(mx < -EXT_LEFT || mx > FIELD_W+EXT_RIGHT || my < -EXT_DOWN || my > FIELD_H+EXT_TOP) return; // clicked outside the visible canvas
+    state.curvePoints.push({x: mx, y: my});
+    if(state.curvePoints.length === 3){
+      state.curveMode = false;
+      evaluateCurve();
+    }
+    updatePlotButtonLabel();
+    render();
+    return;
   }
-  updatePlotButtonLabel();
-  render();
+
+  if(state.measureMode){
+    if(mx < -EXT_LEFT || mx > FIELD_W+EXT_RIGHT || my < -EXT_DOWN || my > FIELD_H+EXT_TOP) return; // clicked outside the visible canvas
+    state.measurePoints.push({x: mx, y: my});
+    if(state.measurePoints.length === 2){
+      state.measureMode = false;
+    }
+    updateMeasureButtonLabel();
+    render();
+  }
 }
 
 function updatePlotButtonLabel(){
@@ -740,46 +1125,69 @@ function updatePlotButtonLabel(){
   }
 }
 
+function updateMeasureButtonLabel(){
+  const btn = document.getElementById('measureBtn');
+  if(state.measureMode){
+    btn.textContent = `Click Point ${state.measurePoints.length+1}/2`;
+    btn.classList.add('primary');
+  } else {
+    btn.textContent = 'Measure Points';
+    btn.classList.remove('primary');
+  }
+}
+
 function renderSVG(){
   const { points, obstacles, route, curvePoints, curveResult, curveMode } = state;
+  const TOTAL_W = FIELD_W + EXT_LEFT + EXT_RIGHT;
+  const TOTAL_H = FIELD_H + EXT_DOWN + EXT_TOP;
   let s = '';
   s += `<svg viewBox="0 0 ${SVG_W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg">`;
   s += `<defs>
     <pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
       <line x1="0" y1="0" x2="0" y2="6" stroke="var(--obstacle)" stroke-width="3" opacity="0.55"/>
     </pattern>
+    <pattern id="bufferHatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="9" stroke="var(--grid-line-major)" stroke-width="2" opacity="0.5"/>
+    </pattern>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="var(--accent-route)"/>
     </marker>
   </defs>`;
 
-  // background field panel
-  s += `<rect x="${PAD_L}" y="${PAD_T}" width="${FIELD_W*SCALE}" height="${FIELD_H*SCALE}" fill="var(--panel-2)" stroke="var(--grid-line-major)" stroke-width="1.5"/>`;
+  // extended buffer zone (take-off/landing only) — full extended area on all 4 sides, hatched
+  s += `<rect x="${PAD_L}" y="${PAD_T}" width="${TOTAL_W*SCALE}" height="${TOTAL_H*SCALE}" fill="url(#bufferHatch)" stroke="var(--grid-line-major)" stroke-width="1"/>`;
+  s += `<text x="${PAD_L+6}" y="${PAD_T+TOTAL_H*SCALE-8}" fill="var(--text-secondary)" font-family="var(--mono)" font-size="9" letter-spacing="0.5">T/L BUFFER ZONE</text>`;
 
-  // grid lines (0.5m minor, 1m major)
-  for(let gx=0; gx<=FIELD_W*2; gx++){
-    const xm = gx*0.5;
-    const px = PAD_L + xm*SCALE;
+  // official course panel, drawn on top of the buffer zone
+  const courseX = PAD_L + EXT_LEFT*SCALE, courseY = PAD_T + EXT_TOP*SCALE;
+  s += `<rect x="${courseX}" y="${courseY}" width="${FIELD_W*SCALE}" height="${FIELD_H*SCALE}" fill="var(--panel-2)" stroke="var(--grid-line-major)" stroke-width="2"/>`;
+
+  // grid lines (0.5m minor, 1m major) across the full extended area
+  for(let gx=0; gx<=TOTAL_W*2; gx++){
+    const xm = -EXT_LEFT + gx*0.5;
+    const px = PAD_L + gx*0.5*SCALE;
     const major = (gx % 2 === 0);
-    s += `<line x1="${px}" y1="${PAD_T}" x2="${px}" y2="${PAD_T+FIELD_H*SCALE}" stroke="${major?'var(--grid-line-major)':'var(--grid-line)'}" stroke-width="${major?1:0.6}"/>`;
+    s += `<line x1="${px}" y1="${PAD_T}" x2="${px}" y2="${PAD_T+TOTAL_H*SCALE}" stroke="${major?'var(--grid-line-major)':'var(--grid-line)'}" stroke-width="${major?1:0.6}"/>`;
     if(major){
-      s += `<text x="${px}" y="${PAD_T+FIELD_H*SCALE+16}" fill="var(--text-secondary)" font-family="var(--mono)" font-size="10" text-anchor="middle">${-xm}m</text>`;
+      s += `<text x="${px}" y="${PAD_T+TOTAL_H*SCALE+16}" fill="var(--text-secondary)" font-family="var(--mono)" font-size="10" text-anchor="middle">${-xm}m</text>`;
     }
   }
-  for(let gy=0; gy<=FIELD_H*2; gy++){
-    const ym = gy*0.5;
-    const py = PAD_T + (FIELD_H-ym)*SCALE;
+  for(let gy=0; gy<=TOTAL_H*2; gy++){
+    const ym = -EXT_DOWN + gy*0.5;
+    const py = PAD_T + (FIELD_H+EXT_TOP-ym)*SCALE;
     const major = (gy % 2 === 0);
-    s += `<line x1="${PAD_L}" y1="${py}" x2="${PAD_L+FIELD_W*SCALE}" y2="${py}" stroke="${major?'var(--grid-line-major)':'var(--grid-line)'}" stroke-width="${major?1:0.6}"/>`;
+    s += `<line x1="${PAD_L}" y1="${py}" x2="${PAD_L+TOTAL_W*SCALE}" y2="${py}" stroke="${major?'var(--grid-line-major)':'var(--grid-line)'}" stroke-width="${major?1:0.6}"/>`;
     if(major){
       s += `<text x="${PAD_L-10}" y="${py+3}" fill="var(--text-secondary)" font-family="var(--mono)" font-size="10" text-anchor="end">${ym}m</text>`;
     }
   }
 
-  // obstacles
-  obstacles.forEach(obstacle=>{
+  // obstacles — draggable
+  obstacles.forEach((obstacle,i)=>{
     const op = toPx({x:obstacle.x, y:obstacle.y+obstacle.size});
-    s += `<rect x="${op.x}" y="${op.y}" width="${obstacle.size*SCALE}" height="${obstacle.size*SCALE}" fill="url(#hatch)" stroke="var(--obstacle)" stroke-width="1.5"/>`;
+    s += `<g class="obstacle-handle" data-index="${i}" style="cursor:move;">
+      <rect x="${op.x}" y="${op.y}" width="${obstacle.size*SCALE}" height="${obstacle.size*SCALE}" fill="url(#hatch)" stroke="var(--obstacle)" stroke-width="1.5"/>
+    </g>`;
   });
 
   // route path (dashed line + direction arrow + midpoint dots) — toggleable
@@ -804,13 +1212,15 @@ function renderSVG(){
     });
   }
 
-  // points
+  // points — draggable (take-off/landing may be dragged into the buffer zone; waypoints stay on-course)
   points.forEach(pt=>{
     const p = toPx(pt);
     const r = POINT_R*SCALE;
     const color = roleColor(pt.role);
-    s += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="var(--point-fill)" stroke="${color}" stroke-width="2.5"/>`;
-    s += `<text x="${p.x}" y="${p.y+4}" fill="${color}" font-family="var(--mono)" font-size="12" font-weight="700" text-anchor="middle">${pt.label}</text>`;
+    s += `<g class="mission-point-handle" data-id="${pt.id}" style="cursor:move;">
+      <circle cx="${p.x}" cy="${p.y}" r="${r}" fill="var(--point-fill)" stroke="${color}" stroke-width="2.5"/>
+      <text x="${p.x}" y="${p.y+4}" fill="${color}" font-family="var(--mono)" font-size="12" font-weight="700" text-anchor="middle" style="pointer-events:none;">${pt.label}</text>
+    </g>`;
   });
 
   // flight curve arc (drawn on top of everything)
@@ -858,13 +1268,17 @@ function renderSVG(){
           readoutLines.push({ text: `R: ${curveResult.radius.toFixed(2)} m`, color: lineColor });
           readoutLines.push({ text: `Arc: ${curveResult.arcLength.toFixed(2)} m`, color: lineColor });
           readoutLines.push({ text: `Time: ${curveResult.time.toFixed(2)} s @ ${(state.speed*100).toFixed(0)} cm/s`, color: lineColor });
+          if(curveResult.outOfBounds) readoutLines.push({ text: '⚠ Curve exceeds field boundary', color: 'var(--landing)' });
           if(exceeded) borderColor = 'var(--landing)';
         }
       }
     }
 
     if(readoutLines.length){
-      const bw = 230, bh = 24*readoutLines.length + 26;
+      const charWidth = 7.4; // approx px per monospace character at font-size 12
+      const maxChars = Math.max(...readoutLines.map(l=>l.text.length), 14);
+      const bw = Math.max(210, Math.ceil(maxChars*charWidth) + 26);
+      const bh = 24*readoutLines.length + 26;
       const { x: bx, y: by } = getReadoutOrigin(bw, bh);
       let g = `<g id="curveReadoutBox" transform="translate(${bx},${by})" style="cursor:move;">`;
       g += `<rect x="0" y="0" width="${bw}" height="${bh}" fill="rgba(15,22,32,0.78)" stroke="${borderColor}" stroke-width="1.5" rx="4"/>`;
@@ -877,22 +1291,116 @@ function renderSVG(){
     }
   }
 
+  // ---------- Relative measurement tool (2 points + heading levers) ----------
+  {
+    const { measurePoints, measureMode, headingLeverA, headingLeverB } = state;
+
+    // connecting line between P1 and P2
+    if(measurePoints.length === 2){
+      const p1 = toPx(measurePoints[0]), p2 = toPx(measurePoints[1]);
+      s += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="var(--measure)" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+    }
+
+    // measure points P1, P2 — draggable
+    measurePoints.forEach((pt,i)=>{
+      const p = toPx(pt);
+      const label = i===0 ? 'P1' : 'P2';
+      s += `<g class="measure-point-handle" data-index="${i}" style="cursor:move;">
+        <circle cx="${p.x}" cy="${p.y}" r="9" fill="var(--panel-2)" stroke="var(--measure)" stroke-width="2.5"/>
+        <text x="${p.x}" y="${p.y+4}" fill="var(--measure)" font-family="var(--mono)" font-size="9.5" font-weight="700" text-anchor="middle" style="pointer-events:none;">${label}</text>
+      </g>`;
+    });
+
+    // heading levers, pinned at P1
+    if(measurePoints.length >= 1){
+      const originPx = toPx(measurePoints[0]);
+      const absA = normalizeDeg(headingLeverA);
+      const absB = normalizeDeg(headingLeverA + headingLeverB);
+      const tipA = leverEndpointPx(originPx, absA, LEVER_LEN_A);
+      const tipB = leverEndpointPx(originPx, absB, LEVER_LEN_B);
+
+      // small arc between the two levers showing the angle between them
+      const arcR = 22;
+      const startArc = { x: originPx.x + arcR*Math.sin(absA*Math.PI/180), y: originPx.y - arcR*Math.cos(absA*Math.PI/180) };
+      const endArc = { x: originPx.x + arcR*Math.sin(absB*Math.PI/180), y: originPx.y - arcR*Math.cos(absB*Math.PI/180) };
+      const largeArc = Math.abs(headingLeverB) > 180 ? 1 : 0;
+      const sweep = headingLeverB >= 0 ? 1 : 0;
+      s += `<path d="M${startArc.x},${startArc.y} A${arcR},${arcR} 0 ${largeArc} ${sweep} ${endArc.x},${endArc.y}" fill="none" stroke="var(--measure)" stroke-width="1.5" opacity="0.7"/>`;
+
+      // lever A (primary, snapped every 90°)
+      s += `<line x1="${originPx.x}" y1="${originPx.y}" x2="${tipA.x}" y2="${tipA.y}" stroke="var(--measure)" stroke-width="2.5"/>`;
+      s += `<g class="lever-a-handle" style="cursor:grab;">
+        <circle cx="${tipA.x}" cy="${tipA.y}" r="7" fill="var(--measure)" stroke="var(--panel)" stroke-width="1.5"/>
+      </g>`;
+
+      // lever B (relative, free rotation)
+      s += `<line x1="${originPx.x}" y1="${originPx.y}" x2="${tipB.x}" y2="${tipB.y}" stroke="var(--text-primary)" stroke-width="2" stroke-dasharray="2 2"/>`;
+      s += `<g class="lever-b-handle" style="cursor:grab;">
+        <circle cx="${tipB.x}" cy="${tipB.y}" r="7" fill="var(--text-primary)" stroke="var(--panel)" stroke-width="1.5"/>
+      </g>`;
+
+      // heading label near P1
+      const totalHeading = normalizeDeg(headingLeverA + headingLeverB);
+      s += `<text x="${originPx.x}" y="${originPx.y-14}" fill="var(--measure)" font-family="var(--mono)" font-size="10" font-weight="700" text-anchor="middle">${totalHeading.toFixed(1)}°</text>`;
+    } else if(measureMode){
+      // no points yet — nothing to draw
+    }
+
+    // draggable readout box (distance + relative coordinates + heading)
+    if(measurePoints.length > 0 || measureMode){
+      const lines = [];
+      let borderColor = 'var(--measure)';
+      if(measureMode && measurePoints.length < 2){
+        lines.push({ text: `Click point ${measurePoints.length+1} of 2 on the field`, color: 'var(--measure)' });
+      }
+      if(measurePoints.length === 2){
+        const A = measurePoints[0], B = measurePoints[1];
+        const totalHeading = normalizeDeg(headingLeverA + headingLeverB);
+        const res = computeHeadingRelative(A, B, totalHeading);
+        const dirWord = headingLeverB === 0 ? '' : (headingLeverB > 0 ? ' CW' : ' CCW');
+        lines.push({ text: `Distance: ${res.r.toFixed(2)} m`, color: 'var(--text-primary)' });
+        lines.push({ text: `Heading: ${totalHeading.toFixed(1)}° (base ${normalizeDeg(headingLeverA).toFixed(1)}°, ${Math.abs(headingLeverB).toFixed(1)}°${dirWord})`, color: 'var(--text-secondary)' });
+        lines.push({ text: `Fwd (X): ${fmt2(res.forwardX)} m`, color: 'var(--text-primary)' });
+        lines.push({ text: `Lat (Y): ${fmt2(res.lateralY)} m`, color: 'var(--text-primary)' });
+      }
+      if(lines.length){
+        const charWidth = 7.4;
+        const maxChars = Math.max(...lines.map(l=>l.text.length), 14);
+        const bw = Math.max(210, Math.ceil(maxChars*charWidth) + 26);
+        const bh = 24*lines.length + 26;
+        const defaultOrigin = { x: 10, y: PAD_T + 6 };
+        const { x: bx, y: by } = state.measureReadoutPos || defaultOrigin;
+        let g = `<g id="measureReadoutBox" transform="translate(${bx},${by})" style="cursor:move;">`;
+        g += `<rect x="0" y="0" width="${bw}" height="${bh}" fill="rgba(15,22,32,0.78)" stroke="${borderColor}" stroke-width="1.5" rx="4"/>`;
+        g += `<text x="10" y="14" fill="var(--text-secondary)" font-family="var(--mono)" font-size="9">⠿⠿ drag</text>`;
+        lines.forEach((line,i)=>{
+          g += `<text x="12" y="${34+i*22}" fill="${line.color}" font-family="var(--mono)" font-size="12">${line.text}</text>`;
+        });
+        g += `</g>`;
+        s += g;
+      }
+    }
+  }
+
   s += `</svg>`;
   document.getElementById('svgHolder').innerHTML = s;
   attachSvgClickHandler();
 }
 
+function getSortedPointsForGrid(){
+  const order = {takeoff:0, landing:1, normal:2};
+  return state.points.slice().sort((a,b)=>{
+    if(order[a.role]!==order[b.role]) return order[a.role]-order[b.role];
+    return Number(a.label)-Number(b.label);
+  });
+}
+
 function renderPanels(){
-  const { points, obstacles, route } = state;
+  const { obstacles, route } = state;
 
   // points table
-  const rows = points
-    .slice()
-    .sort((a,b)=>{
-      const order = {takeoff:0, landing:1, normal:2};
-      if(order[a.role]!==order[b.role]) return order[a.role]-order[b.role];
-      return Number(a.label)-Number(b.label);
-    })
+  const sortedPoints = getSortedPointsForGrid();
+  const rows = sortedPoints
     .map(p=>{
       const roleName = p.role==='takeoff' ? 'Take-off' : p.role==='landing' ? 'Landing' : 'Waypoint';
       const c = toDroneXY(p);
@@ -974,6 +1482,34 @@ function renderPanels(){
     curveEl.innerHTML = html;
   }
 
+  // relative measurement panel
+  const measureEl = document.getElementById('measureInfo');
+  const { measurePoints, headingLeverA, headingLeverB } = state;
+  if(!measurePoints.length){
+    measureEl.innerHTML = `Click <b>Measure Points</b>, then tap 2 points on the field. Drag the two levers at P1 to set a heading — relative coordinates update to match.`;
+  } else {
+    const c1 = toDroneXY(measurePoints[0]);
+    let html = `Point P1: <b>(${fmt2(c1.x)}, ${fmt2(c1.y)})</b><br>`;
+    if(measurePoints.length === 2){
+      const c2 = toDroneXY(measurePoints[1]);
+      html += `Point P2: <b>(${fmt2(c2.x)}, ${fmt2(c2.y)})</b><br><br>`;
+      const totalHeading = normalizeDeg(headingLeverA + headingLeverB);
+      const res = computeHeadingRelative(measurePoints[0], measurePoints[1], totalHeading);
+      const dirWord = headingLeverB === 0 ? 'aligned' : (headingLeverB > 0 ? `${Math.abs(headingLeverB).toFixed(1)}° CW` : `${Math.abs(headingLeverB).toFixed(1)}° CCW`);
+      html += `
+        Lever A (base heading): <b>${normalizeDeg(headingLeverA).toFixed(1)}°</b><br>
+        Lever B (relative to A): <b>${dirWord}</b><br>
+        Total heading: <b>${totalHeading.toFixed(1)}°</b><br><br>
+        Distance P1→P2: <b>${res.r.toFixed(2)} m</b><br>
+        Forward (X): <b>${fmt2(res.forwardX)} m</b><br>
+        Lateral (Y): <b>${fmt2(res.lateralY)} m</b>
+      `;
+    } else {
+      html += `<br>Points selected: <b>1/2</b>`;
+    }
+    measureEl.innerHTML = html;
+  }
+
   syncCoordInputs();
 }
 
@@ -1015,7 +1551,9 @@ document.getElementById('plotCurveBtn').addEventListener('click', ()=>{
   state.curveMode = true;
   state.curvePoints = [];
   state.curveResult = null;
+  state.measureMode = false; // mutually exclusive with the measurement tool's click-to-place
   updatePlotButtonLabel();
+  updateMeasureButtonLabel();
   render();
 });
 
@@ -1027,6 +1565,24 @@ document.getElementById('clearCurveBtn').addEventListener('click', ()=>{
   render();
 });
 
+document.getElementById('measureBtn').addEventListener('click', ()=>{
+  state.measureMode = true;
+  state.measurePoints = [];
+  state.curveMode = false; // mutually exclusive with the flight-curve tool's click-to-place
+  updateMeasureButtonLabel();
+  updatePlotButtonLabel();
+  render();
+});
+
+document.getElementById('clearMeasureBtn').addEventListener('click', ()=>{
+  state.measureMode = false;
+  state.measurePoints = [];
+  state.headingLeverA = 0;
+  state.headingLeverB = 0;
+  updateMeasureButtonLabel();
+  render();
+});
+
 const speedInput = document.getElementById('speedInput');
 const speedLabel = document.getElementById('speedLabel');
 speedInput.addEventListener('input', ()=>{
@@ -1035,16 +1591,43 @@ speedInput.addEventListener('input', ()=>{
   speedLabel.textContent = cmPerSec.toFixed(0);
   if(state.curveResult && !state.curveResult.error){
     state.curveResult.time = state.curveResult.arcLength / state.speed;
-    state.curveResult.warnings = computeWarnings(state.curveResult.radius, state.curveResult.arcLength, state.curveResult.time);
+    state.curveResult.warnings = computeWarnings(state.curveResult.radius, state.curveResult.arcLength, state.curveResult.time, state.curveResult.outOfBounds);
   }
   render();
 });
 
 // ---------- Manual coordinate entry for the 12 mission points ----------
+// Excel-style behavior: clicking/tabbing into a coordinate cell selects its whole value
+function enableSelectAllOnFocus(el){
+  el.addEventListener('focus', ()=> el.select());
+  el.addEventListener('mouseup', (e)=> e.preventDefault()); // stop the click's mouseup from collapsing the selection
+}
+
 function attachPointsTableHandlers(){
   document.querySelectorAll('#pointsTable .pt-coord').forEach(input=>{
     input.addEventListener('change', onPointCoordChange);
+    enableSelectAllOnFocus(input);
   });
+  attachGridSelection('points');
+}
+
+// Commits a value (in the new coordinate frame) into row/col of the points grid.
+// row = index into getSortedPointsForGrid(); col = 0 for X, 1 for Y.
+function commitPointsCell(row, col, val){
+  const sorted = getSortedPointsForGrid();
+  const pt = sorted[row];
+  if(!pt) return;
+  const current = toDroneXY(pt);
+  const merged = col === 0 ? { x: val, y: current.y } : { x: current.x, y: val };
+  const fieldPt = fromDroneXY(merged);
+  const isSpecial = pt.role === 'takeoff' || pt.role === 'landing';
+  const minX = isSpecial ? -EXT_LEFT+MARGIN : MARGIN;
+  const minY = isSpecial ? -EXT_DOWN+MARGIN : MARGIN;
+  const maxX = isSpecial ? FIELD_W+EXT_RIGHT-MARGIN : FIELD_W-MARGIN;
+  const maxY = isSpecial ? FIELD_H+EXT_TOP-MARGIN : FIELD_H-MARGIN;
+  pt.x = clamp(fieldPt.x, minX, maxX);
+  pt.y = clamp(fieldPt.y, minY, maxY);
+  // pt is mutated in place, so any reference held by state.route stays correct
 }
 
 function onPointCoordChange(e){
@@ -1058,11 +1641,11 @@ function onPointCoordChange(e){
   const yv = parseFloat(yEl.value);
   if(isNaN(xv) || isNaN(yv)) return; // wait until both fields hold numbers
 
-  const fieldPt = fromDroneXY({ x: xv, y: yv });
-  const margin = POINT_R + 0.05;
-  pt.x = clamp(fieldPt.x, margin, FIELD_W - margin);
-  pt.y = clamp(fieldPt.y, margin, FIELD_H - margin);
-  // pt is mutated in place, so any reference held by state.route stays correct
+  const sorted = getSortedPointsForGrid();
+  const row = sorted.findIndex(p=>p.id === id);
+  if(row === -1) return;
+  commitPointsCell(row, 0, xv);
+  commitPointsCell(row, 1, yv);
   render();
 }
 
@@ -1095,6 +1678,28 @@ function syncCoordInputs(){
   });
 }
 
+// Commits a value (in the new coordinate frame) into row/col of the curve-points grid.
+// row = 0/1/2 for A/B/C; col = 0 for X, 1 for Y.
+function commitCurveCell(row, col, val){
+  ensureThreeCurvePoints();
+  const pt = state.curvePoints[row];
+  const current = toDroneXY(pt);
+  const merged = col === 0 ? { x: val, y: current.y } : { x: current.x, y: val };
+  const fieldPt = fromDroneXY(merged);
+  fieldPt.x = clamp(fieldPt.x, -EXT_LEFT, FIELD_W+EXT_RIGHT);
+  fieldPt.y = clamp(fieldPt.y, -EXT_DOWN, FIELD_H+EXT_TOP);
+  state.curvePoints[row] = fieldPt;
+}
+
+function finalizeCurveEdit(){
+  state.curveMode = false;
+  if(state.curvePoints.length === 3 && state.curvePoints.every(p=>p)){
+    evaluateCurve();
+  }
+  updatePlotButtonLabel();
+  render();
+}
+
 function applyCoordInput(index){
   const label = COORD_LABELS[index];
   const xEl = document.getElementById(`pt${label}_x`);
@@ -1103,24 +1708,251 @@ function applyCoordInput(index){
   const yv = parseFloat(yEl.value);
   if(isNaN(xv) || isNaN(yv)) return; // wait until both fields hold numbers
 
-  ensureThreeCurvePoints();
-  const newFieldPt = fromDroneXY({ x: xv, y: yv });
-  newFieldPt.x = clamp(newFieldPt.x, 0, FIELD_W);
-  newFieldPt.y = clamp(newFieldPt.y, 0, FIELD_H);
-  state.curvePoints[index] = newFieldPt;
-  state.curveMode = false;
-
-  if(state.curvePoints.length === 3 && state.curvePoints.every(p=>p)){
-    evaluateCurve();
-  }
-  updatePlotButtonLabel();
-  render();
+  commitCurveCell(index, 0, xv);
+  commitCurveCell(index, 1, yv);
+  finalizeCurveEdit();
 }
 
 COORD_LABELS.forEach((label, i)=>{
-  document.getElementById(`pt${label}_x`).addEventListener('change', ()=>applyCoordInput(i));
-  document.getElementById(`pt${label}_y`).addEventListener('change', ()=>applyCoordInput(i));
+  const xEl = document.getElementById(`pt${label}_x`);
+  const yEl = document.getElementById(`pt${label}_y`);
+  xEl.addEventListener('change', ()=>applyCoordInput(i));
+  yEl.addEventListener('change', ()=>applyCoordInput(i));
+  enableSelectAllOnFocus(xEl);
+  enableSelectAllOnFocus(yEl);
 });
+
+// ---------- Excel-style multi-cell range selection (Points table + Curve coordinates) ----------
+const GRID_CONFIG = {
+  points: {
+    rows: 12,
+    getCellEl: (row, col)=>{
+      const list = document.querySelectorAll(`#pointsTable .pt-${col===0?'x':'y'}`);
+      return list[row] || null;
+    },
+    getDisplayValue: (row, col)=>{
+      const sorted = getSortedPointsForGrid();
+      const pt = sorted[row];
+      if(!pt) return '';
+      const c = toDroneXY(pt);
+      return fmt2(col===0 ? c.x : c.y);
+    },
+    commitCell: commitPointsCell,
+    afterCommit: ()=>{ render(); }
+  },
+  curve: {
+    rows: 3,
+    getCellEl: (row, col)=>{
+      const label = COORD_LABELS[row];
+      return document.getElementById(`pt${label}_${col===0?'x':'y'}`);
+    },
+    getDisplayValue: (row, col)=>{
+      const pt = state.curvePoints[row];
+      if(!pt) return '';
+      const c = toDroneXY(pt);
+      return fmt2(col===0 ? c.x : c.y);
+    },
+    commitCell: commitCurveCell,
+    afterCommit: ()=>{ finalizeCurveEdit(); }
+  }
+};
+
+const gridSelections = {
+  points: { anchor: null, focus: null, dragging: false },
+  curve:  { anchor: null, focus: null, dragging: false }
+};
+let activeGrid = null;
+
+function clampInt(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+function normSelRange(sel){
+  if(!sel.anchor || !sel.focus) return null;
+  return {
+    r0: Math.min(sel.anchor.row, sel.focus.row), r1: Math.max(sel.anchor.row, sel.focus.row),
+    c0: Math.min(sel.anchor.col, sel.focus.col), c1: Math.max(sel.anchor.col, sel.focus.col)
+  };
+}
+
+function applyGridHighlight(gridName){
+  const cfg = GRID_CONFIG[gridName], sel = gridSelections[gridName];
+  const rng = normSelRange(sel);
+  for(let r=0; r<cfg.rows; r++){
+    for(let c=0; c<2; c++){
+      const el = cfg.getCellEl(r,c);
+      if(!el) continue;
+      const inRange = !!rng && r>=rng.r0 && r<=rng.r1 && c>=rng.c0 && c<=rng.c1;
+      el.classList.toggle('cell-selected', inRange);
+    }
+  }
+}
+
+function handleGridKeydown(e, gridName, row, col){
+  const cfg = GRID_CONFIG[gridName], sel = gridSelections[gridName];
+  const arrowMap = { ArrowUp:[-1,0], ArrowDown:[1,0], ArrowLeft:[0,-1], ArrowRight:[0,1] };
+
+  if(arrowMap[e.key]){
+    e.preventDefault();
+    const [dr,dc] = arrowMap[e.key];
+    const nr = clampInt(row+dr, 0, cfg.rows-1);
+    const nc = clampInt(col+dc, 0, 1);
+    if(e.shiftKey){
+      if(!sel.anchor) sel.anchor = {row,col};
+      sel.focus = {row:nr, col:nc};
+    } else {
+      sel.anchor = {row:nr, col:nc};
+      sel.focus = {row:nr, col:nc};
+    }
+    applyGridHighlight(gridName);
+    const nextEl = cfg.getCellEl(nr,nc);
+    if(nextEl) nextEl.focus();
+    return;
+  }
+
+  if(e.key === 'Delete' || e.key === 'Backspace'){
+    const rng = normSelRange(sel);
+    if(rng && (rng.r1 > rng.r0 || rng.c1 > rng.c0)){
+      // multi-cell selection: clear every selected cell. Single-cell keeps normal text editing.
+      e.preventDefault();
+      for(let r=rng.r0; r<=rng.r1; r++){
+        for(let c=rng.c0; c<=rng.c1; c++){
+          cfg.commitCell(r, c, 0);
+        }
+      }
+      cfg.afterCommit();
+    }
+  }
+}
+
+let activeDragGrid = null; // which grid (if any) is currently mid drag-select
+
+function attachGridSelection(gridName){
+  const cfg = GRID_CONFIG[gridName], sel = gridSelections[gridName];
+  for(let r=0; r<cfg.rows; r++){
+    for(let c=0; c<2; c++){
+      const el = cfg.getCellEl(r,c);
+      if(!el) continue;
+      el.dataset.gridName = gridName;
+      el.dataset.gridRow = r;
+      el.dataset.gridCol = c;
+      el.setAttribute('draggable', 'false');
+      // Safari (and others) can start a native text-drag from a selected input's text —
+      // that's what was hijacking the range-select. Block it at the source.
+      el.addEventListener('dragstart', (e)=> e.preventDefault());
+      el.addEventListener('dragover', (e)=> e.preventDefault());
+      el.addEventListener('drop', (e)=> e.preventDefault());
+      el.addEventListener('mousedown', (e)=>{
+        activeGrid = gridName;
+        activeDragGrid = gridName;
+        sel.dragging = true;
+        if(e.shiftKey && sel.anchor){
+          sel.focus = {row:r, col:c};
+        } else {
+          sel.anchor = {row:r, col:c};
+          sel.focus = {row:r, col:c};
+        }
+        applyGridHighlight(gridName);
+      });
+      el.addEventListener('focus', ()=>{ activeGrid = gridName; });
+      el.addEventListener('keydown', (e)=> handleGridKeydown(e, gridName, r, c));
+    }
+  }
+  applyGridHighlight(gridName); // re-apply any selection that survived the rebuild
+}
+
+// Track the cursor directly (rather than relying on per-cell mouseenter, which Safari can
+// swallow once a native text-selection/drag gesture starts) so the range extends reliably.
+document.addEventListener('mousemove', (e)=>{
+  const gridName = activeDragGrid;
+  if(!gridName) return;
+  const sel = gridSelections[gridName];
+  if(!sel.dragging) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cellEl = el && el.closest ? el.closest(`input[data-grid-name="${gridName}"]`) : null;
+  if(!cellEl) return;
+  const r = parseInt(cellEl.dataset.gridRow, 10), c = parseInt(cellEl.dataset.gridCol, 10);
+  if(sel.focus && sel.focus.row === r && sel.focus.col === c) return; // no change
+  sel.focus = { row: r, col: c };
+  applyGridHighlight(gridName);
+});
+
+// While actively drag-selecting, stop the browser's own page-wide text selection sweep
+document.addEventListener('selectstart', (e)=>{
+  if(activeDragGrid) e.preventDefault();
+});
+
+document.addEventListener('mouseup', ()=>{
+  gridSelections.points.dragging = false;
+  gridSelections.curve.dragging = false;
+  activeDragGrid = null;
+});
+
+// Clicking anywhere outside both grids clears their selection highlight
+document.addEventListener('mousedown', (e)=>{
+  const cellEl = e.target.closest ? e.target.closest('input[data-grid-name]') : null;
+  if(cellEl) return; // click landed on a grid cell — its own handler manages selection
+  let changed = false;
+  ['points','curve'].forEach(g=>{
+    if(gridSelections[g].anchor || gridSelections[g].focus){
+      gridSelections[g].anchor = null;
+      gridSelections[g].focus = null;
+      changed = true;
+    }
+  });
+  if(changed){
+    applyGridHighlight('points');
+    applyGridHighlight('curve');
+  }
+});
+
+document.addEventListener('copy', (e)=>{
+  if(!activeGrid) return;
+  const cfg = GRID_CONFIG[activeGrid], sel = gridSelections[activeGrid];
+  const rng = normSelRange(sel);
+  if(!rng) return;
+  const text = [];
+  for(let r=rng.r0; r<=rng.r1; r++){
+    const rowVals = [];
+    for(let c=rng.c0; c<=rng.c1; c++){
+      rowVals.push(cfg.getDisplayValue(r,c));
+    }
+    text.push(rowVals.join('\t'));
+  }
+  e.clipboardData.setData('text/plain', text.join('\n'));
+  e.preventDefault();
+});
+
+document.addEventListener('paste', (e)=>{
+  if(!activeGrid) return;
+  const cfg = GRID_CONFIG[activeGrid], sel = gridSelections[activeGrid];
+  const start = sel.focus || sel.anchor;
+  if(!start) return;
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if(!text) return;
+  e.preventDefault();
+
+  const rows = text.replace(/\r/g,'').split('\n');
+  while(rows.length > 1 && rows[rows.length-1] === '') rows.pop();
+
+  let maxRow = start.row, maxCol = start.col;
+  rows.forEach((rowStr, ri)=>{
+    rowStr.split('\t').forEach((valStr, ci)=>{
+      const row = start.row + ri, col = start.col + ci;
+      if(row < 0 || row >= cfg.rows || col < 0 || col > 1) return;
+      const val = parseFloat(valStr);
+      if(isNaN(val)) return;
+      cfg.commitCell(row, col, val);
+      maxRow = Math.max(maxRow, row);
+      maxCol = Math.max(maxCol, col);
+    });
+  });
+
+  sel.anchor = { row: start.row, col: start.col };
+  sel.focus = { row: maxRow, col: maxCol };
+  cfg.afterCommit();
+  applyGridHighlight(activeGrid);
+});
+
+attachGridSelection('curve'); // static elements — attach once; 'points' is (re)attached on every table rebuild
 
 const wrapEl = document.getElementById('fieldPanel');
 const fsBtn = document.getElementById('fullscreenBtn');
