@@ -216,6 +216,38 @@
     border-radius:3px;
   }
   .pt-coord:focus{ border-color:var(--point); outline:none; }
+
+  .save-slots{ display:flex; flex-direction:column; gap:6px; }
+  .save-slot-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:11px;
+  }
+  .save-slot-row .slot-num{ width:22px; color:var(--text-secondary); flex-shrink:0; }
+  .save-slot-row .slot-meta{
+    flex:1;
+    min-width:0;
+    color:var(--text-secondary);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .save-slot-row .slot-meta.filled{ color:var(--text-primary); }
+  .save-slot-row button{
+    padding:4px 9px;
+    font-size:10px;
+    flex-shrink:0;
+  }
+  .save-slot-row button:disabled{
+    opacity:0.35;
+    cursor:not-allowed;
+  }
+  .save-slot-row button:disabled:hover{
+    border-color:var(--border);
+    color:var(--text-primary);
+  }
   .cell-selected{
     background: rgba(56,189,248,0.28) !important;
     outline: 2px solid var(--point) !important;
@@ -340,6 +372,18 @@
 
     <div class="stack">
       <div class="panel">
+        <div class="section-label">Saved Configurations</div>
+        <div id="saveSlots" class="save-slots"></div>
+        <div class="btns" style="margin-top:10px;">
+          <button id="importConfigBtn">Import Configuration…</button>
+        </div>
+        <input type="file" id="importConfigFile" accept="application/json,.json" style="display:none;">
+        <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
+          Slots are saved in this browser only · use Export/Import to share a specific configuration with someone on another computer
+        </div>
+      </div>
+
+      <div class="panel">
         <div class="section-label">Points</div>
         <table id="pointsTable"></table>
         <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
@@ -428,6 +472,9 @@ let state = {
 const LEVER_LEN_A = 72; // px — primary (reference) heading lever, longer
 const LEVER_LEN_B = 46; // px — secondary (relative) lever, shorter so it never hides lever A's handle
 const LEVER_A_SNAP_TOLERANCE = 2; // degrees — lever A only snaps to a 90° mark if released within this of one
+
+const SAVE_KEY_PREFIX = 'droneRoutePlanner_slot_';
+const SAVE_SLOT_COUNT = 10;
 
 // thresholds for flight-curve warnings
 const LIMIT_RADIUS = 10;      // meters
@@ -1977,8 +2024,204 @@ function syncFsLabel(){
 document.addEventListener('fullscreenchange', syncFsLabel);
 document.addEventListener('webkitfullscreenchange', syncFsLabel);
 
+// ---------- Save / Load configurations (up to 10 slots, stored in this browser) ----------
+function isStorageAvailable(){
+  try{
+    const testKey = '__drp_storage_test__';
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
+function serializeState(){
+  return {
+    savedAt: Date.now(),
+    points: state.points,
+    obstacles: state.obstacles,
+    routeIds: state.route.map(p=>p.id),
+    showPath: state.showPath,
+    curvePoints: state.curvePoints,
+    speed: state.speed,
+    headingLeverA: state.headingLeverA,
+    headingLeverB: state.headingLeverB,
+    measurePoints: state.measurePoints,
+    readoutPos: state.readoutPos,
+    measureReadoutPos: state.measureReadoutPos
+  };
+}
+
+function applyLoadedState(data){
+  state.points = data.points || [];
+  state.obstacles = data.obstacles || [];
+  state.route = (data.routeIds || []).map(id => state.points.find(p=>p.id === id)).filter(Boolean);
+  state.showPath = data.showPath !== undefined ? data.showPath : true;
+  state.curvePoints = data.curvePoints || [];
+  state.curveResult = null;
+  if(state.curvePoints.length === 3 && state.curvePoints.every(p=>p)) evaluateCurve();
+  state.speed = data.speed !== undefined ? data.speed : 0.30;
+  state.headingLeverA = data.headingLeverA || 0;
+  state.headingLeverB = data.headingLeverB || 0;
+  state.measurePoints = data.measurePoints || [];
+  state.readoutPos = data.readoutPos || null;
+  state.measureReadoutPos = data.measureReadoutPos || null;
+  state.curveMode = false;
+  state.measureMode = false;
+
+  // sync the controls that mirror state but live outside the normal render cycle
+  const obsCount = clampInt(state.obstacles.length || 1, 1, 5);
+  document.getElementById('obstacleCount').value = obsCount;
+  document.getElementById('obstacleCountLabel').textContent = obsCount;
+
+  const cmPerSec = Math.round(state.speed*100);
+  document.getElementById('speedInput').value = cmPerSec;
+  document.getElementById('speedLabel').textContent = cmPerSec;
+
+  document.getElementById('togglePathBtn').textContent = state.showPath ? 'Hide Path Line' : 'Show Path Line';
+
+  gridSelections.points.anchor = null; gridSelections.points.focus = null;
+  gridSelections.curve.anchor = null; gridSelections.curve.focus = null;
+
+  updatePlotButtonLabel();
+  updateMeasureButtonLabel();
+  render();
+}
+
+function formatSavedTimestamp(ts){
+  if(!ts) return 'Unknown time';
+  return new Date(ts).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function renderSaveSlots(){
+  const holder = document.getElementById('saveSlots');
+  if(!isStorageAvailable()){
+    holder.innerHTML = `<div style="font-family:var(--mono); font-size:11px; color:var(--text-secondary); line-height:1.6;">
+      Browser storage isn't available in this preview (common inside embedded previews/sandboxes). Download this file and open it directly in a browser tab to use Save/Load.
+    </div>`;
+    return;
+  }
+  let html = '';
+  for(let i=1; i<=SAVE_SLOT_COUNT; i++){
+    let raw = null;
+    try{ raw = localStorage.getItem(SAVE_KEY_PREFIX+i); } catch(e){ raw = null; }
+    let meta = 'Empty', filled = false;
+    if(raw){
+      try{
+        const d = JSON.parse(raw);
+        meta = formatSavedTimestamp(d.savedAt);
+        filled = true;
+      } catch(e){
+        meta = 'Corrupted';
+        filled = true; // still allow clearing it
+      }
+    }
+    html += `<div class="save-slot-row">
+      <span class="slot-num">#${i}</span>
+      <span class="slot-meta ${filled?'filled':''}">${meta}</span>
+      <button data-action="save" data-slot="${i}">Save</button>
+      <button data-action="load" data-slot="${i}" ${filled?'':'disabled'}>Load</button>
+      <button data-action="export" data-slot="${i}" ${filled?'':'disabled'}>Export</button>
+      <button data-action="clear" data-slot="${i}" ${filled?'':'disabled'}>✕</button>
+    </div>`;
+  }
+  holder.innerHTML = html;
+  holder.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const slot = parseInt(btn.getAttribute('data-slot'), 10);
+      const action = btn.getAttribute('data-action');
+      if(action === 'save') doSaveSlot(slot);
+      else if(action === 'load') doLoadSlot(slot);
+      else if(action === 'export') doExportSlot(slot);
+      else if(action === 'clear') doClearSlot(slot);
+    });
+  });
+}
+
+function doSaveSlot(slot){
+  let existing = null;
+  try{ existing = localStorage.getItem(SAVE_KEY_PREFIX+slot); } catch(e){ /* treat as empty */ }
+  if(existing && !confirm(`Overwrite slot #${slot}?`)) return;
+  try{
+    localStorage.setItem(SAVE_KEY_PREFIX+slot, JSON.stringify(serializeState()));
+  } catch(e){
+    alert('Could not save — browser storage may be full or unavailable.');
+    return;
+  }
+  renderSaveSlots();
+}
+
+function doLoadSlot(slot){
+  let raw = null;
+  try{ raw = localStorage.getItem(SAVE_KEY_PREFIX+slot); } catch(e){ raw = null; }
+  if(!raw) return;
+  if(!confirm(`Load slot #${slot}? This will replace your current configuration.`)) return;
+  let data;
+  try{
+    data = JSON.parse(raw);
+  } catch(e){
+    alert('This slot appears to be corrupted and cannot be loaded.');
+    return;
+  }
+  applyLoadedState(data);
+}
+
+function doClearSlot(slot){
+  if(!confirm(`Delete slot #${slot}?`)) return;
+  try{ localStorage.removeItem(SAVE_KEY_PREFIX+slot); } catch(e){ /* nothing to do */ }
+  renderSaveSlots();
+}
+
+function doExportSlot(slot){
+  let raw = null;
+  try{ raw = localStorage.getItem(SAVE_KEY_PREFIX+slot); } catch(e){ raw = null; }
+  if(!raw) return;
+  const blob = new Blob([raw], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `drone-route-config-slot-${slot}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('importConfigBtn').addEventListener('click', ()=>{
+  document.getElementById('importConfigFile').click();
+});
+document.getElementById('importConfigFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let data;
+    try{
+      data = JSON.parse(reader.result);
+    } catch(err){
+      alert('This file is not a valid drone route configuration.');
+      e.target.value = '';
+      return;
+    }
+    if(!data || !Array.isArray(data.points)){
+      alert('This file is not a valid drone route configuration.');
+      e.target.value = '';
+      return;
+    }
+    if(!confirm('Load this configuration? This will replace your current setup.')){
+      e.target.value = '';
+      return;
+    }
+    applyLoadedState(data);
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
 // ---------- Init ----------
 resetAll();
+renderSaveSlots();
 </script>
 </body>
 </html>
