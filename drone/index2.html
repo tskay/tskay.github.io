@@ -157,7 +157,10 @@
     gap:22px;
     align-items:start;
   }
-  @media (max-width:880px){ .layout{grid-template-columns:1fr;} }
+  @media (max-width:880px){
+    .layout{grid-template-columns:1fr;}
+    .stack{ position:static; max-height:none; overflow-y:visible; padding-right:0; }
+  }
 
   .panel{
     background:var(--panel);
@@ -185,6 +188,28 @@
     height:1px;
     background:var(--border);
   }
+
+  .collapsible-header{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--text-secondary);
+    margin:0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    width:100%;
+    background:none;
+    border:none;
+    padding:0;
+    cursor:pointer;
+    text-align:left;
+  }
+  .collapsible-header:hover{ color:var(--text-primary); }
+  .collapsible-header .spacer{ flex:1; height:1px; background:var(--border); }
+  .chevron{ font-size:10px; color:var(--text-secondary); transition:transform .15s ease; display:inline-block; }
+  .chevron.open{ transform:rotate(90deg); }
 
   .legend{
     display:flex;
@@ -310,7 +335,22 @@
     outline:none;
   }
 
-  .stack{display:flex; flex-direction:column; gap:18px;}
+  .stack{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    position:sticky;
+    top:28px;
+    max-height:calc(100vh - 56px);
+    overflow-y:auto;
+    padding-right:6px;
+    scrollbar-width:thin;
+    scrollbar-color:var(--border) transparent;
+  }
+  .stack::-webkit-scrollbar{ width:8px; }
+  .stack::-webkit-scrollbar-track{ background:transparent; }
+  .stack::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
+  .stack::-webkit-scrollbar-thumb:hover{ background:var(--grid-line-major); }
 </style>
 </head>
 <body>
@@ -372,18 +412,6 @@
 
     <div class="stack">
       <div class="panel">
-        <div class="section-label">Saved Configurations</div>
-        <div id="saveSlots" class="save-slots"></div>
-        <div class="btns" style="margin-top:10px;">
-          <button id="importConfigBtn">Import Configuration…</button>
-        </div>
-        <input type="file" id="importConfigFile" accept="application/json,.json" style="display:none;">
-        <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
-          Slots are saved in this browser only · use Export/Import to share a specific configuration with someone on another computer
-        </div>
-      </div>
-
-      <div class="panel">
         <div class="section-label">Points</div>
         <table id="pointsTable"></table>
         <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
@@ -434,6 +462,24 @@
       <div class="panel">
         <div class="section-label">Relative Measurement</div>
         <div class="curve-info" id="measureInfo">Click <b>Measure Points</b>, then tap 2 points on the field. Drag the two levers at P1 to set a heading — relative coordinates update to match.</div>
+      </div>
+
+      <div class="panel">
+        <button id="saveConfigToggle" class="collapsible-header">
+          <span>Saved Configurations</span>
+          <span class="spacer"></span>
+          <span id="saveConfigChevron" class="chevron">▸</span>
+        </button>
+        <div id="saveConfigBody" style="display:none; margin-top:12px;">
+          <div id="saveSlots" class="save-slots"></div>
+          <div class="btns" style="margin-top:10px;">
+            <button id="importConfigBtn">Import Configuration…</button>
+          </div>
+          <input type="file" id="importConfigFile" accept="application/json,.json" style="display:none;">
+          <div style="margin-top:8px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
+            Slots are saved in this browser only · use Export/Import to share a specific configuration with someone on another computer
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1122,7 +1168,7 @@ function attachLeverDrag(svgEl){
     }
   );
   setupDrag(leverB, (bearing)=>{
-    state.headingLeverB = normalizeSigned(bearing - state.headingLeverA);
+    state.headingLeverB = bearing; // absolute, independent of lever A
   });
 }
 
@@ -1358,11 +1404,12 @@ function renderSVG(){
       </g>`;
     });
 
-    // heading levers, pinned at P1
+    // heading levers, pinned at P1 — decoupled: each stores its own absolute bearing
     if(measurePoints.length >= 1){
       const originPx = toPx(measurePoints[0]);
       const absA = normalizeDeg(headingLeverA);
-      const absB = normalizeDeg(headingLeverA + headingLeverB);
+      const absB = normalizeDeg(headingLeverB);
+      const relBtoA = normalizeSigned(absB - absA); // for display only — doesn't drive B's position
       const tipA = leverEndpointPx(originPx, absA, LEVER_LEN_A);
       const tipB = leverEndpointPx(originPx, absB, LEVER_LEN_B);
 
@@ -1370,25 +1417,37 @@ function renderSVG(){
       const arcR = 22;
       const startArc = { x: originPx.x + arcR*Math.sin(absA*Math.PI/180), y: originPx.y - arcR*Math.cos(absA*Math.PI/180) };
       const endArc = { x: originPx.x + arcR*Math.sin(absB*Math.PI/180), y: originPx.y - arcR*Math.cos(absB*Math.PI/180) };
-      const largeArc = Math.abs(headingLeverB) > 180 ? 1 : 0;
-      const sweep = headingLeverB >= 0 ? 1 : 0;
+      const largeArc = Math.abs(relBtoA) > 180 ? 1 : 0;
+      const sweep = relBtoA >= 0 ? 1 : 0;
       s += `<path d="M${startArc.x},${startArc.y} A${arcR},${arcR} 0 ${largeArc} ${sweep} ${endArc.x},${endArc.y}" fill="none" stroke="var(--measure)" stroke-width="1.5" opacity="0.7"/>`;
 
-      // lever A (primary, snapped every 90°)
+      // label showing lever B's angle + rotation direction relative to lever A, placed along the arc's midpoint
+      if(Math.abs(relBtoA) > 0.05){
+        const midAngle = absA + relBtoA/2;
+        const labelR = arcR + 16;
+        const labelX = originPx.x + labelR*Math.sin(midAngle*Math.PI/180);
+        const labelY = originPx.y - labelR*Math.cos(midAngle*Math.PI/180);
+        const dirWord = relBtoA > 0 ? 'CW' : 'CCW';
+        const labelText = `${Math.abs(relBtoA).toFixed(1)}° ${dirWord}`;
+        // outline (halo) pass behind the fill pass, for legibility over the grid
+        s += `<text x="${labelX}" y="${labelY}" fill="none" stroke="var(--panel)" stroke-width="3" font-family="var(--mono)" font-size="10.5" font-weight="700" text-anchor="middle" dominant-baseline="middle">${labelText}</text>`;
+        s += `<text x="${labelX}" y="${labelY}" fill="var(--text-primary)" font-family="var(--mono)" font-size="10.5" font-weight="700" text-anchor="middle" dominant-baseline="middle">${labelText}</text>`;
+      }
+
+      // lever A (reference, snapped every 90°)
       s += `<line x1="${originPx.x}" y1="${originPx.y}" x2="${tipA.x}" y2="${tipA.y}" stroke="var(--measure)" stroke-width="2.5"/>`;
       s += `<g class="lever-a-handle" style="cursor:grab;">
         <circle cx="${tipA.x}" cy="${tipA.y}" r="7" fill="var(--measure)" stroke="var(--panel)" stroke-width="1.5"/>
       </g>`;
 
-      // lever B (relative, free rotation)
+      // lever B (heading, free rotation, independent of lever A)
       s += `<line x1="${originPx.x}" y1="${originPx.y}" x2="${tipB.x}" y2="${tipB.y}" stroke="var(--text-primary)" stroke-width="2" stroke-dasharray="2 2"/>`;
       s += `<g class="lever-b-handle" style="cursor:grab;">
         <circle cx="${tipB.x}" cy="${tipB.y}" r="7" fill="var(--text-primary)" stroke="var(--panel)" stroke-width="1.5"/>
       </g>`;
 
-      // heading label near P1
-      const totalHeading = normalizeDeg(headingLeverA + headingLeverB);
-      s += `<text x="${originPx.x}" y="${originPx.y-14}" fill="var(--measure)" font-family="var(--mono)" font-size="10" font-weight="700" text-anchor="middle">${totalHeading.toFixed(1)}°</text>`;
+      // heading label near P1 — lever B is the actual heading used for the relative-coordinate calculation
+      s += `<text x="${originPx.x}" y="${originPx.y-14}" fill="var(--measure)" font-family="var(--mono)" font-size="10" font-weight="700" text-anchor="middle">${absB.toFixed(1)}°</text>`;
     } else if(measureMode){
       // no points yet — nothing to draw
     }
@@ -1402,11 +1461,12 @@ function renderSVG(){
       }
       if(measurePoints.length === 2){
         const A = measurePoints[0], B = measurePoints[1];
-        const totalHeading = normalizeDeg(headingLeverA + headingLeverB);
+        const totalHeading = normalizeDeg(headingLeverB);
         const res = computeHeadingRelative(A, B, totalHeading);
-        const dirWord = headingLeverB === 0 ? '' : (headingLeverB > 0 ? ' CW' : ' CCW');
+        const relBtoA = normalizeSigned(headingLeverB - headingLeverA);
+        const dirWord = relBtoA === 0 ? '' : (relBtoA > 0 ? ' CW' : ' CCW');
         lines.push({ text: `Distance: ${res.r.toFixed(2)} m`, color: 'var(--text-primary)' });
-        lines.push({ text: `Heading: ${totalHeading.toFixed(1)}° (base ${normalizeDeg(headingLeverA).toFixed(1)}°, ${Math.abs(headingLeverB).toFixed(1)}°${dirWord})`, color: 'var(--text-secondary)' });
+        lines.push({ text: `Heading: ${totalHeading.toFixed(1)}° (ref ${normalizeDeg(headingLeverA).toFixed(1)}°, ${Math.abs(relBtoA).toFixed(1)}°${dirWord})`, color: 'var(--text-secondary)' });
         lines.push({ text: `Fwd (X): ${fmt2(res.forwardX)} m`, color: 'var(--text-primary)' });
         lines.push({ text: `Lat (Y): ${fmt2(res.lateralY)} m`, color: 'var(--text-primary)' });
       }
@@ -1540,12 +1600,13 @@ function renderPanels(){
     if(measurePoints.length === 2){
       const c2 = toDroneXY(measurePoints[1]);
       html += `Point P2: <b>(${fmt2(c2.x)}, ${fmt2(c2.y)})</b><br><br>`;
-      const totalHeading = normalizeDeg(headingLeverA + headingLeverB);
+      const totalHeading = normalizeDeg(headingLeverB);
       const res = computeHeadingRelative(measurePoints[0], measurePoints[1], totalHeading);
-      const dirWord = headingLeverB === 0 ? 'aligned' : (headingLeverB > 0 ? `${Math.abs(headingLeverB).toFixed(1)}° CW` : `${Math.abs(headingLeverB).toFixed(1)}° CCW`);
+      const relBtoA = normalizeSigned(headingLeverB - headingLeverA);
+      const dirWord = relBtoA === 0 ? 'aligned' : (relBtoA > 0 ? `${Math.abs(relBtoA).toFixed(1)}° CW` : `${Math.abs(relBtoA).toFixed(1)}° CCW`);
       html += `
-        Lever A (base heading): <b>${normalizeDeg(headingLeverA).toFixed(1)}°</b><br>
-        Lever B (relative to A): <b>${dirWord}</b><br>
+        Lever A (reference): <b>${normalizeDeg(headingLeverA).toFixed(1)}°</b><br>
+        Lever B (heading): <b>${normalizeDeg(headingLeverB).toFixed(1)}°</b> <span style="color:var(--text-secondary)">(${dirWord} of A)</span><br>
         Total heading: <b>${totalHeading.toFixed(1)}°</b><br><br>
         Distance P1→P2: <b>${res.r.toFixed(2)} m</b><br>
         Forward (X): <b>${fmt2(res.forwardX)} m</b><br>
@@ -2217,6 +2278,14 @@ document.getElementById('importConfigFile').addEventListener('change', (e)=>{
     e.target.value = '';
   };
   reader.readAsText(file);
+});
+
+document.getElementById('saveConfigToggle').addEventListener('click', ()=>{
+  const body = document.getElementById('saveConfigBody');
+  const chevron = document.getElementById('saveConfigChevron');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  chevron.classList.toggle('open', !isOpen);
 });
 
 // ---------- Init ----------
