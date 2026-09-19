@@ -45,6 +45,7 @@
     .pt-coord{ min-height:34px; font-size:13px; padding:7px 6px; }
     .coord-row input[type="number"]{ min-height:34px; font-size:13px; }
     .obstacle-control input[type="range"]{ height:28px; }
+    .route-select{ min-height:34px; font-size:13px; }
   }
   #fieldPanel:fullscreen{
     max-width:none;
@@ -361,6 +362,50 @@
     outline:none;
   }
 
+  .route-editor{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:12px;
+    padding-bottom:12px;
+    border-bottom:1px dashed var(--border);
+  }
+  .route-editor-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-secondary);
+  }
+  .route-editor-row .route-fixed{
+    color:var(--text-primary);
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:3px;
+    padding:4px 10px;
+    min-width:44px;
+    text-align:center;
+  }
+  .route-select{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--point);
+    font-family:var(--mono);
+    font-size:12px;
+    font-weight:700;
+    padding:5px 8px;
+    border-radius:3px;
+    min-width:52px;
+    text-align:center;
+  }
+  .route-select:focus{ border-color:var(--point); outline:none; }
+
+  .obstacle-edit-row{ margin-bottom:10px; }
+  .obstacle-edit-row:last-child{ margin-bottom:0; }
+  .obstacle-edit-row .coord-row{ margin-top:5px; }
+
   .stack{
     display:flex;
     flex-direction:column;
@@ -476,6 +521,14 @@
 
       <div class="panel">
         <div class="section-label">Current Route</div>
+        <div class="route-editor">
+          <div class="route-editor-row"><span>Take-off</span><b class="route-fixed">T</b></div>
+          <div class="route-editor-row"><span>Stop 1</span><select id="routeLeg0" class="route-select"></select></div>
+          <div class="route-editor-row"><span>Stop 2</span><select id="routeLeg1" class="route-select"></select></div>
+          <div class="route-editor-row"><span>Stop 3</span><select id="routeLeg2" class="route-select"></select></div>
+          <div class="route-editor-row"><span>Stop 4</span><select id="routeLeg3" class="route-select"></select></div>
+          <div class="route-editor-row"><span>Landing</span><b class="route-fixed">L</b></div>
+        </div>
         <ul class="route-list" id="routeList"></ul>
         <div class="total-row"><span>Total path length</span><b id="totalDist"></b></div>
       </div>
@@ -850,6 +903,7 @@ function attachMissionPointDrag(svgEl){
     let dragging = false;
 
     function onPointerDown(e){
+      if(state.curveMode || state.measureMode) return; // let placement clicks land on/through this point
       dragging = true;
       e.preventDefault();
       e.stopPropagation();
@@ -889,7 +943,10 @@ function attachMissionPointDrag(svgEl){
     }
 
     handle.addEventListener('pointerdown', onPointerDown);
-    handle.addEventListener('click', (e)=> e.stopPropagation());
+    handle.addEventListener('click', (e)=>{
+      if(state.curveMode || state.measureMode) return; // let it bubble up to handleSvgClick
+      e.stopPropagation();
+    });
   });
 }
 
@@ -915,6 +972,7 @@ function attachObstacleDrag(svgEl){
     }
 
     function onPointerDown(e){
+      if(state.curveMode || state.measureMode) return; // let placement clicks land on/through this obstacle
       const liveSvg = document.querySelector('#svgHolder svg');
       const obstacle = state.obstacles[index];
       if(!liveSvg || !obstacle) return;
@@ -947,7 +1005,10 @@ function attachObstacleDrag(svgEl){
     }
 
     handle.addEventListener('pointerdown', onPointerDown);
-    handle.addEventListener('click', (e)=> e.stopPropagation());
+    handle.addEventListener('click', (e)=>{
+      if(state.curveMode || state.measureMode) return; // let it bubble up to handleSvgClick
+      e.stopPropagation();
+    });
   });
 }
 
@@ -1555,19 +1616,31 @@ function renderPanels(){
   `;
   attachPointsTableHandlers();
 
-  // obstacle info
+  // obstacle info — editable center coordinates
   document.getElementById('obstacleInfo').innerHTML = obstacles.map((o,i)=>{
     const corner = toDroneXY({x:o.x, y:o.y});
     const center = toDroneXY({x:o.x+o.size/2, y:o.y+o.size/2});
     return `
-    <div style="margin-bottom:${i<obstacles.length-1?'10px':'0'};">
-      <b>Obstacle ${i+1}</b><br>
-      Corner: <b>(${fmt2(corner.x)}, ${fmt2(corner.y)})</b><br>
-      Size: <b>0.30m × 0.30m</b><br>
-      Center: <b>(${fmt2(center.x)}, ${fmt2(center.y)})</b>
+    <div class="obstacle-edit-row">
+      <b>Obstacle ${i+1}</b>
+      <div class="coord-row">
+        <label>X <input type="number" inputmode="decimal" class="obstacle-coord obstacle-x" data-index="${i}" step="0.01" value="${fmt2(center.x)}"></label>
+        <label>Y <input type="number" inputmode="decimal" class="obstacle-coord obstacle-y" data-index="${i}" step="0.01" value="${fmt2(center.y)}"></label>
+      </div>
+      <div style="margin-top:4px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
+        Size: 0.30m × 0.30m (fixed) · Corner: (${fmt2(corner.x)}, ${fmt2(corner.y)})
+      </div>
     </div>
   `;
-  }).join('');
+  }).join('') + `
+    <div style="margin-top:4px; font-family:var(--mono); font-size:10.5px; color:var(--text-secondary);">
+      Center in the new frame · press Enter or click away to apply
+    </div>
+  `;
+  attachObstacleInputHandlers();
+
+  // route editor (manual stop selection)
+  renderRouteEditor();
 
   // route list
   let total = 0;
@@ -1679,6 +1752,11 @@ document.getElementById('togglePathBtn').addEventListener('click', ()=>{
   render();
 });
 
+for(let i=0; i<4; i++){
+  const sel = document.getElementById(`routeLeg${i}`);
+  if(sel) sel.addEventListener('change', ()=> onRouteLegChange(i));
+}
+
 const obstacleCountInput = document.getElementById('obstacleCount');
 const obstacleCountLabel = document.getElementById('obstacleCountLabel');
 obstacleCountInput.addEventListener('input', ()=>{
@@ -1748,6 +1826,72 @@ function attachPointsTableHandlers(){
     enableSelectAllOnFocus(input);
   });
   attachGridSelection('points');
+}
+
+function attachObstacleInputHandlers(){
+  document.querySelectorAll('#obstacleInfo .obstacle-coord').forEach(input=>{
+    input.addEventListener('change', onObstacleCoordChange);
+    enableSelectAllOnFocus(input);
+  });
+}
+
+function onObstacleCoordChange(e){
+  const idx = parseInt(e.target.getAttribute('data-index'), 10);
+  const obstacle = state.obstacles[idx];
+  if(!obstacle) return;
+
+  const xEl = document.querySelector(`#obstacleInfo .obstacle-x[data-index="${idx}"]`);
+  const yEl = document.querySelector(`#obstacleInfo .obstacle-y[data-index="${idx}"]`);
+  const xv = parseFloat(xEl.value);
+  const yv = parseFloat(yEl.value);
+  if(isNaN(xv) || isNaN(yv)) return; // wait until both fields hold numbers
+
+  const fieldCenter = fromDroneXY({ x: xv, y: yv }); // typed value is the obstacle's center
+  const half = obstacle.size / 2;
+  obstacle.x = clamp(fieldCenter.x - half, 0, FIELD_W - obstacle.size);
+  obstacle.y = clamp(fieldCenter.y - half, 0, FIELD_H - obstacle.size);
+  render();
+}
+
+// Populates the 4 "Stop" dropdowns with the current route's middle waypoints, excluding
+// from each dropdown's option list whichever waypoints are already chosen in the OTHER slots
+// (so duplicate stops can't be selected).
+function renderRouteEditor(){
+  const normals = state.points
+    .filter(p => p.role === 'normal')
+    .sort((a,b) => Number(a.label) - Number(b.label));
+  const middle = (state.route && state.route.length === 6) ? state.route.slice(1,5) : [null,null,null,null];
+
+  for(let i=0; i<4; i++){
+    const sel = document.getElementById(`routeLeg${i}`);
+    if(!sel) continue;
+    const current = middle[i];
+    const usedElsewhere = new Set(
+      middle.filter((_,idx) => idx !== i && middle[idx]).map(p => p.id)
+    );
+    const options = normals.filter(p => !usedElsewhere.has(p.id));
+    const wasFocused = document.activeElement === sel;
+    sel.innerHTML = options.map(p =>
+      `<option value="${p.id}" ${current && p.id === current.id ? 'selected' : ''}>${p.label}</option>`
+    ).join('');
+    if(wasFocused) sel.focus();
+  }
+}
+
+function onRouteLegChange(legIndex){
+  const sel = document.getElementById(`routeLeg${legIndex}`);
+  if(!sel || !sel.value) return;
+  const id = parseInt(sel.value, 10);
+  const pt = state.points.find(p => p.id === id);
+  if(!pt) return;
+
+  const takeoff = state.points.find(p => p.role === 'takeoff');
+  const landing = state.points.find(p => p.role === 'landing');
+  const middle = (state.route && state.route.length === 6) ? state.route.slice(1,5) : [null,null,null,null];
+  middle[legIndex] = pt;
+
+  state.route = [takeoff, ...middle, landing];
+  render();
 }
 
 // Commits a value (in the new coordinate frame) into row/col of the points grid.
